@@ -1,0 +1,11 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+  </Configurations>
+  <Folder Name="/src/">
+    <Project Path="src/Integricode/Integricode.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Integricode.Tests/Integricode.Tests.csproj" />
+  </Folder>
+</Solution>

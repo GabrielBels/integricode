@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Integricode</RootNamespace>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>integricode</ToolCommandName>
+    <PackageId>Integricode</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>GabrielBels</Authors>
+    <Description>Reviews a pull request for bugs and against its linked REQ entry or Jira issue.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Agents.AI" />
+    <PackageReference Include="Microsoft.Agents.AI.Workflows" />
+    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" />
+    <PackageReference Include="Anthropic" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Integricode.Tests" />
+  </ItemGroup>
+
+</Project>

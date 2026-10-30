@@ -1,0 +1,20 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+TestResults/
+artifacts/
+# Env and secrets
+.env
+.env.*
+*.pfx
+# OS and editors
+.DS_Store
+Thumbs.db
+.idea/
+# Local harness state and app worktrees
+tmp/
+.claude/state/
+.claude/worktrees/
