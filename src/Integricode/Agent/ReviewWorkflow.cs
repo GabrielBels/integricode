@@ -14,13 +14,17 @@ namespace Integricode.Agent;
 /// <summary>What the review starts from: the pull request and its files, read from GitHub.</summary>
 public sealed record ReviewRequest(string Repository, PullRequest PullRequest, IReadOnlyList<PullRequestFile> Files);
 
-/// <summary>The fixed input of the review: the requirement, the diff map, and the prompt holding them.</summary>
+/// <summary>
+/// The fixed input of the review: the requirement, the diff map, the patches sent to the model (null when one was left
+/// out), and the prompt holding them.
+/// </summary>
 public sealed record ReviewContext(
     ReviewRequest Request,
     RequirementLink? Link,
     string? RequirementText,
     IReadOnlyList<string> MissingReasons,
     DiffMap DiffMap,
+    IReadOnlyList<DiffFile> SentDiff,
     string Prompt);
 
 /// <summary>The review agent's answer, or why there is none, with the model usage.</summary>
@@ -116,9 +120,19 @@ public sealed class ReviewWorkflow
         }
 
         var diffMap = DiffMap.Build(request.Files);
-        var prompt = BuildPrompt(link, requirementText, missing, request.Files, diffMap);
-        return new ReviewContext(request, link, requirementText, missing, diffMap, prompt);
+        var sentDiff = request.Files.Select(file => new DiffFile(file.Path, SendablePatch(file))).ToList();
+        var prompt = BuildPrompt(link, requirementText, missing, request.Files, sentDiff, diffMap);
+        return new ReviewContext(request, link, requirementText, missing, diffMap, sentDiff, prompt);
     }
+
+    /// <summary>
+    /// The patch when it may go to the model: not excluded, and within the character budget, which it then uses up, so a
+    /// large diff makes the coverage incomplete instead of overflowing the model's context.
+    /// </summary>
+    private string? SendablePatch(PullRequestFile file) =>
+        file.Patch is not null && !guard.IsExcluded(file.Path) && tools.Budget.TryConsume(file.Patch.Length)
+            ? file.Patch
+            : null;
 
     private async ValueTask<ReviewOutcome> ReviewAsync(ReviewContext context, IWorkflowContext workflowContext, CancellationToken cancellationToken)
     {
@@ -180,7 +194,7 @@ public sealed class ReviewWorkflow
             : Coverage.Complete;
         var snapshot = new ContextSnapshot(
             request.PullRequest.HeadSha,
-            [.. request.Files.Select(file => new DiffFile(file.Path, guard.IsExcluded(file.Path) ? null : file.Patch))],
+            context.SentDiff,
             context.RequirementText,
             tools.Chunks);
 
@@ -206,7 +220,13 @@ public sealed class ReviewWorkflow
             : null;
     }
 
-    private string BuildPrompt(RequirementLink? link, string? requirementText, IReadOnlyList<string> missing, IReadOnlyList<PullRequestFile> files, DiffMap diffMap)
+    private string BuildPrompt(
+        RequirementLink? link,
+        string? requirementText,
+        IReadOnlyList<string> missing,
+        IReadOnlyList<PullRequestFile> files,
+        IReadOnlyList<DiffFile> sentDiff,
+        DiffMap diffMap)
     {
         var prompt = new StringBuilder();
         if (requirementText is not null)
@@ -220,12 +240,16 @@ public sealed class ReviewWorkflow
         }
 
         prompt.Append("<diff>\n");
-        foreach (var file in files)
+        foreach (var (file, sent) in files.Zip(sentDiff))
         {
             var changed = diffMap.Get(file.Path)?.ChangedLines ?? new SortedSet<int>();
+            var patch = sent.Patch
+                ?? (guard.IsExcluded(file.Path) ? "(not included: excluded from the review context)"
+                    : file.Patch is null ? "(no patch: binary or too large)"
+                    : "(not included: over the context budget)");
             prompt.Append("<file-diff path=\"").Append(file.Path).Append("\" status=\"").Append(file.Status)
                 .Append("\" changed-lines=\"").Append(string.Join(',', changed)).Append("\">\n")
-                .Append(guard.IsExcluded(file.Path) ? "(not included: excluded from the review context)" : file.Patch ?? "(no patch: binary or too large)")
+                .Append(patch)
                 .Append("\n</file-diff>\n");
         }
 

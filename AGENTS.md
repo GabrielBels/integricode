@@ -21,7 +21,7 @@ Integricode is a GitHub Action that reviews a pull request when it becomes ready
 ## Repository Map
 
 - `docs/` - product, requirements, and design docs in the dev-flow/v1 layout; start from the Docs Map.
-- `src/Integricode/` - the tool: `Domain/` (review result, findings, coverage, snapshot, fingerprint), `GitHub/` (REST and GraphQL client, diff map), `Requirements/` (identification, REQ entry source), `Agent/` (chat client factory, repository tools, path guard, budget, review workflow and its embedded instructions), `Validation/` (provenance check), `Commands/` (`review`, `comment`, templates, argument parsing, Actions log), `Program.cs`.
+- `src/Integricode/` - the tool: `Domain/` (review result, findings, coverage, snapshot, fingerprint), `GitHub/` (REST and GraphQL client, diff map), `Requirements/` (identification, REQ entry source), `Agent/` (chat client factory, repository tools, path guard, budget, review workflow and its embedded instructions), `Validation/` (provenance check), `Commands/` (`review`, `comment`, templates, argument parsing, Actions log), `App.cs` (command dispatch, environment variables, exit codes 0, 1, and 2), `Program.cs` (wires `App` to the console and the network).
 - `tests/Integricode.Tests/` - mirrors the tool's folders, plus `Fakes/` (fake GitHub, fake model, temporary checkout), `EndToEnd/`, and `Fixtures/` (a synthetic repository, copied to a temporary folder by the tests).
 - `.github/workflows/ci.yml` - builds and tests on pull requests and on pushes to `main`, with `contents: read` only.
 
@@ -30,7 +30,7 @@ Integricode is a GitHub Action that reviews a pull request when it becomes ready
 - Write every file under `docs/` from its dev-flow/v1 template, in English.
 - C#: file-scoped namespaces, nullable enabled, warnings as errors, records for data, guard clauses (`ArgumentNullException.ThrowIfNull`); exemplars `src/Integricode/Validation/FindingValidator.cs` and `src/Integricode/Commands/CommentCommand.cs`.
 - Logs go through `ActionsLog` and carry only identifiers, counts, states, and hashes; exception messages from libraries are never logged, only their type or HTTP status.
-- Everything published goes through `CommentTemplates`, which caps, HTML-escapes, neutralizes `@` mentions, and escapes square brackets in model or repository text.
+- Everything published goes through `CommentTemplates`, which caps model or repository text and, outside code spans, HTML-escapes it, neutralizes `@` mentions, and escapes square brackets.
 - Tests mirror the source folder (`Integricode.Tests.<Folder>`), name methods as sentences with underscores, and fake every HTTP call (`FakeGitHub`, `FakeHttpHandler`) and model call (`ScriptedChatClient`); test data is synthetic.
 
 ## Boundaries

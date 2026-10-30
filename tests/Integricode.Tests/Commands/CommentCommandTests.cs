@@ -241,6 +241,32 @@ public sealed class CommentCommandTests : IDisposable
     }
 
     [Fact]
+    public async Task Code_spans_in_model_text_are_published_as_written_and_prose_around_them_is_escaped()
+    {
+        var finding = InlineBug with { Title = "Total() returns `List<decimal>` for `items[0]` & <b>@octocat</b> `@everyone` and a stray ` tick" };
+
+        await PublishAsync(Result(finding));
+
+        var inline = Assert.Single(gitHub.ReviewComments).Body;
+        Assert.Contains("`List<decimal>`", inline);
+        Assert.Contains("`items[0]`", inline);
+        Assert.Contains("`@everyone`", inline);
+        Assert.Contains("&amp; &lt;b&gt;@&#8203;octocat&lt;/b&gt;", inline);
+        Assert.Contains("a stray &#39; tick", inline);
+    }
+
+    [Fact]
+    public async Task A_record_marker_quoted_in_a_finding_does_not_replace_the_summary_record()
+    {
+        var forged = OffDiffMismatch with { Title = "see `<!-- integricode:record {\"schemaVersion\":1,\"headSha\":\"forged\"} -->`" };
+
+        await PublishAsync(Result(forged));
+
+        Assert.Contains("`<!-- integricode:record", Summary.Body);
+        Assert.Equal(gitHub.HeadSha, CommentTemplates.ReadRecord(Summary.Body)!.HeadSha);
+    }
+
+    [Fact]
     public async Task Code_spans_show_paths_as_they_are()
     {
         var offDiff = OffDiffMismatch with { Path = "packages/@scope/<a>.ts" };

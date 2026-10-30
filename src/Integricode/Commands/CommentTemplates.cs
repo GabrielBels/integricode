@@ -21,7 +21,7 @@ public sealed record RecordedFinding(FindingKind Kind, string Path, int Line, st
 
 /// <summary>
 /// The fixed templates of everything Integricode publishes. Text that came from the model or the repository is
-/// length-capped, HTML-escaped, and has its <c>@</c> mentions neutralized before it enters a template.
+/// length-capped and, outside code spans, HTML-escaped, with <c>@</c> mentions and Markdown links neutralized.
 /// </summary>
 public static partial class CommentTemplates
 {
@@ -114,7 +114,8 @@ public static partial class CommentTemplates
     /// <summary>Reads the hidden record of a summary, or null when it has none.</summary>
     public static SummaryRecord? ReadRecord(string summary)
     {
-        var start = summary.IndexOf(RecordStart, StringComparison.Ordinal);
+        // The record is always last; a code span in a finding above it may quote the marker.
+        var start = summary.LastIndexOf(RecordStart, StringComparison.Ordinal);
         var end = start < 0 ? -1 : summary.IndexOf("-->", start, StringComparison.Ordinal);
         if (end < 0)
         {
@@ -132,17 +133,23 @@ public static partial class CommentTemplates
     }
 
     /// <summary>
-    /// Collapses whitespace, caps the length, escapes HTML, neutralizes <c>@</c> mentions, and escapes square brackets
-    /// so the text cannot form Markdown links or images.
+    /// Collapses whitespace and caps the length. Outside code spans it also escapes HTML, neutralizes <c>@</c> mentions,
+    /// and escapes square brackets so the text cannot form Markdown links or images. Code spans are kept as written,
+    /// because Markdown shows their content literally; a stray backtick becomes <c>'</c> so no span swallows the rest.
     /// </summary>
-    public static string Sanitize(string text, int maxLength)
-    {
+    public static string Sanitize(string text, int maxLength) =>
+        CodeSpanOrProse().Replace(
+            Cap(text, maxLength),
+            match => match.Value.Length > 1 && match.Value[0] == '`'
+                ? match.Value
+                : EscapeProse(match.Value.Replace('`', '\'')));
+
+    private static string EscapeProse(string text) =>
         // A zero-width space after @ keeps the text readable without notifying anyone.
-        return WebUtility.HtmlEncode(Cap(text, maxLength))
+        WebUtility.HtmlEncode(text)
             .Replace("@", "@&#8203;", StringComparison.Ordinal)
             .Replace("[", "\\[", StringComparison.Ordinal)
             .Replace("]", "\\]", StringComparison.Ordinal);
-    }
 
     private static string Cap(string text, int maxLength)
     {
@@ -236,4 +243,7 @@ public static partial class CommentTemplates
 
     [GeneratedRegex(@"^<!-- integricode:finding:(?<fingerprint>[0-9a-f]{64}) -->")]
     private static partial Regex FindingMarkerPattern();
+
+    [GeneratedRegex("`[^`]+`|[^`]+|`")]
+    private static partial Regex CodeSpanOrProse();
 }

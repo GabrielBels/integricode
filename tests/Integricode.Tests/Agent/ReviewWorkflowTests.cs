@@ -65,6 +65,32 @@ public sealed class ReviewWorkflowTests : IDisposable
     }
 
     [Fact]
+    public async Task A_diff_over_the_character_budget_is_left_out_and_makes_the_coverage_incomplete()
+    {
+        var model = new ScriptedChatClient().ThenText(ValidFindings);
+
+        var result = await Workflow(model, new ContextBudget(maxCharacters: CartPatch.Length - 1)).RunAsync(Request(), CancellationToken.None);
+
+        var prompt = string.Join("\n", model.Calls.Single().Messages.Select(m => m.Text));
+        Assert.Contains("(not included: over the context budget)", prompt);
+        Assert.DoesNotContain("+    public decimal Total", prompt);
+        Assert.Equal(CoverageState.Incomplete, result.Coverage.State);
+        Assert.Equal([$"context budget reached ({CartPatch.Length - 1} characters)"], result.Coverage.Reasons);
+        Assert.Equal(2, result.Findings.Count);
+    }
+
+    [Fact]
+    public async Task The_diff_counts_toward_the_characters_read()
+    {
+        var model = new ScriptedChatClient().ThenText("{\"findings\": []}");
+
+        var result = await Workflow(model).RunAsync(Request(), CancellationToken.None);
+
+        Assert.True(result.Usage.CharactersRead > CartPatch.Length);
+        Assert.Equal(CoverageState.Complete, result.Coverage.State);
+    }
+
+    [Fact]
     public async Task An_excluded_file_in_the_pull_request_sends_neither_its_diff_nor_its_content()
     {
         repository.Write("config/.env.production", "DB_PASSWORD=synthetic-excluded-1a2b\n");
