@@ -16,7 +16,8 @@ try
     {
         ["review", .. var options] => await new ReviewCommand(CreateGitHubClient(), CreateChatClient, log)
             .RunAsync(ReviewOptions.Parse(options), cancellation.Token),
-        ["comment", .. var options] => 0,
+        ["comment", .. var options] => await new CommentCommand(CreateGitHubClient(), log)
+            .RunAsync(CommentOptions.Parse(options), cancellation.Token),
         _ => Usage(),
     };
 }
@@ -41,7 +42,12 @@ static GitHubClient CreateGitHubClient()
     }
 
     var apiUrl = Environment.GetEnvironmentVariable("GITHUB_API_URL");
-    return new GitHubClient(new HttpClient(), new Uri(string.IsNullOrWhiteSpace(apiUrl) ? "https://api.github.com/" : apiUrl), token);
+    var graphqlUrl = Environment.GetEnvironmentVariable("GITHUB_GRAPHQL_URL");
+    return new GitHubClient(
+        new HttpClient(),
+        new Uri(string.IsNullOrWhiteSpace(apiUrl) ? "https://api.github.com/" : apiUrl),
+        token,
+        string.IsNullOrWhiteSpace(graphqlUrl) ? null : new Uri(graphqlUrl));
 }
 
 static Microsoft.Extensions.AI.IChatClient CreateChatClient(ReviewOptions options) => ChatClientFactory.Create(
