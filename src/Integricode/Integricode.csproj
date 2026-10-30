@@ -19,6 +19,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Agent/ReviewInstructions.md" LogicalName="Integricode.Agent.ReviewInstructions.md" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="Integricode.Tests" />
   </ItemGroup>
 
