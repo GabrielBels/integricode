@@ -22,4 +22,10 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <!-- The fixture repository is data for the end-to-end tests, not test code. -->
+  <ItemGroup>
+    <Compile Remove="Fixtures/**" />
+    <None Include="Fixtures/**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

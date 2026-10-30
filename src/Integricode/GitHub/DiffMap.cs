@@ -47,7 +47,8 @@ public sealed partial class DiffMap
 
         var rightLine = 0;
         var inHunk = false;
-        foreach (var rawLine in patch.Split('\n'))
+        var body = patch.EndsWith('\n') ? patch[..^1] : patch;
+        foreach (var rawLine in body.Split('\n'))
         {
             var line = rawLine.TrimEnd('\r');
             var header = HunkHeader().Match(line);
@@ -58,13 +59,13 @@ public sealed partial class DiffMap
                 continue;
             }
 
-            // An empty line is the split artifact of a trailing newline; an empty context line is a single space.
-            if (!inHunk || line.Length == 0)
+            if (!inHunk)
             {
                 continue;
             }
 
-            switch (line[0])
+            // An empty line inside a hunk is a blank context line whose leading space was stripped.
+            switch (line.Length == 0 ? ' ' : line[0])
             {
                 case '+':
                     changed.Add(rightLine);

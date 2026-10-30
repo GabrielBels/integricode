@@ -65,6 +65,15 @@ public class DiffMapTests
     }
 
     [Fact]
+    public void A_blank_context_line_without_its_leading_space_still_counts()
+    {
+        var diff = DiffMap.Parse("@@ -1,3 +1,3 @@\n a\n\n-b\n+c\n");
+
+        Assert.Equal(new[] { 3 }, diff.ChangedLines);
+        Assert.Equal(new[] { 1, 2, 3 }, diff.DiffLines);
+    }
+
+    [Fact]
     public void Windows_line_endings_in_a_patch_are_handled()
     {
         var diff = DiffMap.Parse("@@ -1,2 +1,2 @@\r\n a\r\n-b\r\n+c\r\n");

@@ -4,24 +4,34 @@ Integricode is a GitHub Action that reviews a pull request when it becomes ready
 
 ## Stack
 
-- No code exists yet; the design is in `docs/plans/2026-10-30-pull-request-review-action-design.md`.
-- .NET 10 (SDK 10.0.403), Microsoft Agent Framework (`Microsoft.Agents.AI`, `Microsoft.Agents.AI.Workflows` 1.26.0), `Microsoft.Extensions.AI.OpenAI` 10.11.0, `Anthropic` 13.3.0, xUnit 2.9.3.
-- GitHub Actions (reusable workflow), GitHub Packages (private .NET tool), Jira Cloud REST API v3.
+- .NET 10 (SDK 10.0.403 in `global.json`, `rollForward: latestPatch`), one .NET tool (`integricode`) with the `review` and `comment` commands; the design is in `docs/plans/2026-10-30-pull-request-review-action-design.md`.
+- Microsoft Agent Framework (`Microsoft.Agents.AI`, `Microsoft.Agents.AI.Workflows` 1.26.0), `Microsoft.Extensions.AI.OpenAI` 10.11.0 (OpenAI and Azure OpenAI), `Anthropic` 13.3.0; versions are central in `Directory.Packages.props`.
+- Tests: xUnit 2.9.3, `xunit.runner.visualstudio` 3.1.5, `Microsoft.NET.Test.Sdk` 18.4.0.
+- GitHub REST and GraphQL APIs through `HttpClient` and `System.Text.Json`; no CLI-parsing, YAML, or logging package.
+- GitHub Actions (`ci.yml`; the reusable workflow comes with REQ-003), GitHub Packages (private .NET tool), Jira Cloud REST API v3 (REQ-002).
 
 ## Commands
 
-- Unknown: no project files exist yet; record each command here, exactly as it runs, when the first manifest (`*.sln`, `*.csproj`, workflow file) lands.
+- `dotnet build Integricode.slnx` - builds the tool and the tests; warnings are errors.
+- `dotnet test Integricode.slnx` - runs every test; no test reaches a network or a model provider.
+- `dotnet test Integricode.slnx --filter "FullyQualifiedName~Integricode.Tests.Validation.FindingValidatorTests"` - runs one test class; use a folder namespace (`Integricode.Tests.Commands`) for a whole area.
+- `dotnet pack src/Integricode -o artifacts` - packs the tool as `artifacts/Integricode.<version>.nupkg`.
 - `python <dev-flow>/skills/_shared/scripts/check_layout.py .` - validates the docs layout.
 
 ## Repository Map
 
 - `docs/` - product, requirements, and design docs in the dev-flow/v1 layout; start from the Docs Map.
-- Unknown: the source layout is decided by `/breakdown`; record each top-level directory here when it is created.
+- `src/Integricode/` - the tool: `Domain/` (review result, findings, coverage, snapshot, fingerprint), `GitHub/` (REST and GraphQL client, diff map), `Requirements/` (identification, REQ entry source), `Agent/` (chat client factory, repository tools, path guard, budget, review workflow and its embedded instructions), `Validation/` (provenance check), `Commands/` (`review`, `comment`, templates, argument parsing, Actions log), `Program.cs`.
+- `tests/Integricode.Tests/` - mirrors the tool's folders, plus `Fakes/` (fake GitHub, fake model, temporary checkout), `EndToEnd/`, and `Fixtures/` (a synthetic repository, copied to a temporary folder by the tests).
+- `.github/workflows/ci.yml` - builds and tests on pull requests and on pushes to `main`, with `contents: read` only.
 
 ## Conventions
 
 - Write every file under `docs/` from its dev-flow/v1 template, in English.
-- Unknown: code conventions and their exemplar files are recorded when the first code lands.
+- C#: file-scoped namespaces, nullable enabled, warnings as errors, records for data, guard clauses (`ArgumentNullException.ThrowIfNull`); exemplars `src/Integricode/Validation/FindingValidator.cs` and `src/Integricode/Commands/CommentCommand.cs`.
+- Logs go through `ActionsLog` and carry only identifiers, counts, states, and hashes; exception messages from libraries are never logged, only their type or HTTP status.
+- Everything published goes through `CommentTemplates`, which caps, HTML-escapes, and neutralizes `@` mentions in model or repository text.
+- Tests mirror the source folder (`Integricode.Tests.<Folder>`), name methods as sentences with underscores, and fake every HTTP call (`FakeGitHub`, `FakeHttpHandler`) and model call (`ScriptedChatClient`); test data is synthetic.
 
 ## Boundaries
 
@@ -49,7 +59,7 @@ Integricode is a GitHub Action that reviews a pull request when it becomes ready
 ## Definition of Done
 
 - The layout checker passes with no errors.
-- Build and test commands: Unknown until `/breakdown` creates the first project; add them here then.
+- `dotnet build Integricode.slnx` passes with no warnings, `dotnet test Integricode.slnx` passes, and `dotnet pack src/Integricode -o artifacts` produces the tool package.
 - Requirement checkboxes, glossary terms, and ADRs are updated for the behavior that changed.
 
 ## Gotchas
