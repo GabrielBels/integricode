@@ -10,7 +10,7 @@ Domain terms and the names they have in code. PRDs, requirements, and new code u
 | Ready for review | The moment the author marks a pull request as no longer a draft; the review runs then, before the author requests a reviewer. | - |
 | Review command | The pull-request comment `@integricode review`, which starts a review when written by a person with write access to the repository. | - |
 | Head SHA | The commit a review was run against; a review result is valid only for that commit. | `HeadSha` |
-| Linked issue | The Jira issue the pull request declares it implements. | `RequirementLink` |
+| Linked issue | The Jira issue the pull request declares it implements. | `RequirementKind.JiraIssue` |
 | REQ entry | A requirement in a dev-flow project's `docs/requirements.md`, with its acceptance criteria; the requirement source in the owner's personal repositories. | `RequirementKind.ReqEntry`, `ReqEntrySource` |
 | Acceptance criteria | The conditions written on the linked issue or REQ entry that the change must satisfy. | - |
 | Clarification | A comment or answer on the linked issue that refines or changes what was requested. | - |
@@ -28,4 +28,4 @@ Domain terms and the names they have in code. PRDs, requirements, and new code u
 | Comment job | The workflow job that publishes the review result on the pull request; it holds only the pull-request write permission. | `CommentCommand` |
 | Review result | The file the review job hands to the comment job: head SHA, context hash, coverage, findings, dropped counts, and usage. | `ReviewResult` (`result.json`) |
 | Repository tools | The read-only tools the review agent uses to read, search, and list files of the head-SHA checkout, within the context budget. | `RepositoryTools` |
-| Context budget | The limits on what the repository tools may return per review: 40 calls and 400,000 characters by default. | `ContextBudget` |
+| Context budget | The limits on what a review may read: the diff, the changed files' content, and tool results count toward 400,000 characters, tool calls toward 40, by default. | `ContextBudget` |
