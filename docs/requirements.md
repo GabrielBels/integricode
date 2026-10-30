@@ -9,18 +9,18 @@
 **Source**: PRD-001 (FR-4, FR-6, FR-7, FR-8, FR-9, FR-10, FR-11, FR-12, FR-13, FR-14, FR-15, FR-17)
 
 **Acceptance Criteria**:
-- [ ] The requirement is the first REQ ID or Jira Cloud key found in the title, then the branch name, then the description; the summary names the one used (FR-4).
-- [ ] A REQ ID is read as its `## [REQ-NNN]` section, acceptance criteria included, from the configured requirements file at the head SHA (FR-6).
-- [ ] With no linked requirement, an unreadable one, or a Jira key while the Jira source is absent, bug findings are still reported and the coverage is incomplete with the missing item named (FR-7).
-- [ ] The review uses only the diff, the changed files, the requirement, and what the read-only tools return; excluded paths and paths outside the checkout are refused; at 40 tool calls or 400,000 characters the coverage becomes incomplete; the result records the head SHA and the SHA-256 context hash (FR-8).
-- [ ] Every requirement mismatch carries a requirement quote, a code location in a file of the pull request, and a failure scenario (FR-9).
-- [ ] Every bug finding points at a line the pull request changes and carries a failure scenario (FR-10).
-- [ ] A finding whose quote is not verbatim in the requirement, whose path or line does not exist at the head SHA, or that misses a required field is dropped, and the dropped count by reason is reported (FR-11).
-- [ ] When the pull request's head SHA differs from the result's, no finding is published and the summary says superseded (FR-12).
-- [ ] One summary comment shows the head SHA, coverage, counts by kind, dropped count, and findings without a diff line; each finding on a diff line is an inline comment (FR-13).
-- [ ] A new review updates the same summary comment, minimizes earlier findings it no longer reports as outdated, and does not repeat a published fingerprint (FR-14).
-- [ ] Inline findings are posted in a review with event `COMMENT` only; the tool never approves or requests changes (FR-15).
-- [ ] The summary carries a hidden record of each finding's kind, location, fingerprint, and head SHA, and of the run's model usage (FR-17).
+- [x] The requirement is the first REQ ID or Jira Cloud key found in the title, then the branch name, then the description; the summary names the one used (FR-4).
+- [x] A REQ ID is read as its `## [REQ-NNN]` section, acceptance criteria included, from the configured requirements file at the head SHA (FR-6).
+- [x] With no linked requirement, an unreadable one, or a Jira key while the Jira source is absent, bug findings are still reported and the coverage is incomplete with the missing item named (FR-7).
+- [x] The review uses only the diff, the changed files, the requirement, and what the read-only tools return; excluded paths and paths outside the checkout are refused; at 40 tool calls or 400,000 characters the coverage becomes incomplete; the result records the head SHA and the SHA-256 context hash (FR-8).
+- [x] Every requirement mismatch carries a requirement quote, a code location in a file of the pull request, and a failure scenario (FR-9).
+- [x] Every bug finding points at a line the pull request changes and carries a failure scenario (FR-10).
+- [x] A finding whose quote is not verbatim in the requirement, whose path or line does not exist at the head SHA, or that misses a required field is dropped, and the dropped count by reason is reported (FR-11).
+- [x] When the pull request's head SHA differs from the result's, no finding is published and the summary says superseded (FR-12).
+- [x] One summary comment shows the head SHA, coverage, counts by kind, dropped count, and findings without a diff line; each finding on a diff line is an inline comment (FR-13).
+- [x] A new review updates the same summary comment, minimizes earlier findings it no longer reports as outdated, and does not repeat a published fingerprint (FR-14).
+- [x] Inline findings are posted in a review with event `COMMENT` only; the tool never approves or requests changes (FR-15).
+- [x] The summary carries a hidden record of each finding's kind, location, fingerprint, and head SHA, and of the run's model usage (FR-17).
 
 **Context/Notes**: Greenfield. Design: [2026-10-30-pull-request-review-action-design.md](plans/2026-10-30-pull-request-review-action-design.md); ADRs [ADR-002](decisions/ADR-002-read-only-repository-tools.md) and [ADR-004](decisions/ADR-004-agent-framework-provider-agnostic.md). Ask First settled: dependencies `Microsoft.Agents.AI`, `Microsoft.Agents.AI.Workflows`, `Microsoft.Extensions.AI.OpenAI`, `Anthropic`; `ci.yml`; context sent to the model; published fields. Breakdown: [REQ-001](breakdowns/REQ-001-breakdown.md).
 
