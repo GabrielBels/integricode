@@ -30,7 +30,7 @@ Integricode is a GitHub Action that reviews a pull request when it becomes ready
 - Write every file under `docs/` from its dev-flow/v1 template, in English.
 - C#: file-scoped namespaces, nullable enabled, warnings as errors, records for data, guard clauses (`ArgumentNullException.ThrowIfNull`); exemplars `src/Integricode/Validation/FindingValidator.cs` and `src/Integricode/Commands/CommentCommand.cs`.
 - Logs go through `ActionsLog` and carry only identifiers, counts, states, and hashes; exception messages from libraries are never logged, only their type or HTTP status.
-- Everything published goes through `CommentTemplates`, which caps, HTML-escapes, and neutralizes `@` mentions in model or repository text.
+- Everything published goes through `CommentTemplates`, which caps, HTML-escapes, neutralizes `@` mentions, and escapes square brackets in model or repository text.
 - Tests mirror the source folder (`Integricode.Tests.<Folder>`), name methods as sentences with underscores, and fake every HTTP call (`FakeGitHub`, `FakeHttpHandler`) and model call (`ScriptedChatClient`); test data is synthetic.
 
 ## Boundaries

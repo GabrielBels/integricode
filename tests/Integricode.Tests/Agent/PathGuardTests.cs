@@ -70,11 +70,44 @@ public sealed class PathGuardTests : IDisposable
     }
 
     [Fact]
-    public void A_symlink_inside_the_checkout_is_allowed()
+    public void A_symlink_to_an_allowed_file_inside_the_checkout_is_allowed()
     {
         File.CreateSymbolicLink(repository.FullPath("alias.cs"), repository.FullPath("src/Cart.cs"));
 
         Assert.True(new PathGuard(repository.Root).Check("alias.cs").Allowed);
+    }
+
+    [Fact]
+    public void A_file_symlink_to_an_excluded_file_is_refused()
+    {
+        repository.Write(".env", "API_KEY=synthetic");
+        File.CreateSymbolicLink(repository.FullPath("notes.txt"), repository.FullPath(".env"));
+
+        var check = new PathGuard(repository.Root).Check("notes.txt");
+
+        Assert.False(check.Allowed);
+        Assert.Equal("the path is excluded from the review context", check.Refusal);
+    }
+
+    [Fact]
+    public void A_directory_symlink_to_an_excluded_directory_is_refused()
+    {
+        repository.Write(".git/config", "[http] extraheader = synthetic");
+        Directory.CreateSymbolicLink(repository.FullPath("meta"), repository.FullPath(".git"));
+
+        var check = new PathGuard(repository.Root).Check("meta/config");
+
+        Assert.False(check.Allowed);
+        Assert.Equal("the path is excluded from the review context", check.Refusal);
+    }
+
+    [Fact]
+    public void A_directory_symlink_into_a_configured_exclusion_is_refused()
+    {
+        repository.Write("secrets/prod/db.txt", "synthetic");
+        Directory.CreateSymbolicLink(repository.FullPath("data"), repository.FullPath("secrets/prod"));
+
+        Assert.False(new PathGuard(repository.Root, ["secrets/**"]).Check("data/db.txt").Allowed);
     }
 
     [Theory]

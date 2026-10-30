@@ -121,6 +121,47 @@ public sealed class CommentCommandTests : IDisposable
     }
 
     [Fact]
+    public async Task A_finding_that_comes_back_after_being_minimized_is_posted_again()
+    {
+        await PublishAsync(Result(InlineBug));
+        var first = Assert.Single(gitHub.ReviewComments);
+        await PublishAsync(Result());
+
+        await PublishAsync(Result(InlineBug));
+
+        Assert.Equal([first.NodeId], gitHub.Minimized);
+        Assert.Equal(2, gitHub.Reviews.Count);
+        var reposted = Assert.Single(gitHub.Reviews[^1].Comments);
+        Assert.StartsWith(CommentTemplates.FindingMarker(InlineBug.Fingerprint), reposted.Body);
+    }
+
+    [Fact]
+    public async Task A_stale_comment_already_minimized_is_not_minimized_again()
+    {
+        await PublishAsync(Result(InlineBug));
+        await PublishAsync(Result());
+
+        await PublishAsync(Result());
+
+        Assert.Single(gitHub.Minimized);
+    }
+
+    [Fact]
+    public async Task A_late_superseded_review_keeps_the_summary_of_the_current_head()
+    {
+        var late = Result(InlineBug);
+        gitHub.HeadSha = "2222222222222222222222222222222222222222";
+        await PublishAsync(Result(InlineBug with { Title = "Current head finding" }));
+        var current = Summary.Body;
+
+        var exitCode = await PublishAsync(late);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal(current, Summary.Body);
+        Assert.Single(gitHub.Reviews);
+    }
+
+    [Fact]
     public async Task Publishing_the_same_result_twice_adds_nothing()
     {
         await PublishAsync(Result(InlineBug));
@@ -184,6 +225,29 @@ public sealed class CommentCommandTests : IDisposable
         Assert.DoesNotContain(new string('s', CommentTemplates.MaxScenarioLength), inline);
         Assert.Contains("…", inline);
         Assert.True(inline.Length < 2000);
+    }
+
+    [Fact]
+    public async Task Model_text_cannot_form_markdown_links_or_images()
+    {
+        var hostile = InlineBug with { Title = "See ![logo](https://attacker.test/p.png) and [docs](https://phish.test)" };
+
+        await PublishAsync(Result(hostile));
+
+        var inline = Assert.Single(gitHub.ReviewComments).Body;
+        Assert.DoesNotContain("![logo](", inline);
+        Assert.DoesNotContain("[docs](", inline);
+        Assert.Contains("\\[docs\\](https://phish.test)", inline);
+    }
+
+    [Fact]
+    public async Task Code_spans_show_paths_as_they_are()
+    {
+        var offDiff = OffDiffMismatch with { Path = "packages/@scope/<a>.ts" };
+
+        await PublishAsync(Result(offDiff));
+
+        Assert.Contains("`packages/@scope/<a>.ts:9`", Summary.Body);
     }
 
     [Theory]

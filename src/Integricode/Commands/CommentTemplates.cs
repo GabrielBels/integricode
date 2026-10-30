@@ -84,7 +84,7 @@ public static partial class CommentTemplates
             foreach (var finding in offDiff)
             {
                 body.Append("- **").Append(KindLabel(finding.Kind)).Append("** at ")
-                    .Append(Code(Sanitize(finding.Path, MaxPathLength) + ":" + finding.Line.ToString(CultureInfo.InvariantCulture)))
+                    .Append(Code(finding.Path + ":" + finding.Line.ToString(CultureInfo.InvariantCulture), MaxPathLength))
                     .Append(": ").Append(Sanitize(finding.Title, MaxTitleLength)).Append('\n');
                 if (finding.RequirementQuote is { } quote)
                 {
@@ -116,22 +116,38 @@ public static partial class CommentTemplates
     {
         var start = summary.IndexOf(RecordStart, StringComparison.Ordinal);
         var end = start < 0 ? -1 : summary.IndexOf("-->", start, StringComparison.Ordinal);
-        return end < 0
-            ? null
-            : JsonSerializer.Deserialize<SummaryRecord>(summary[(start + RecordStart.Length)..end], ReviewResult.JsonOptions);
-    }
-
-    /// <summary>Collapses whitespace, caps the length, escapes HTML, and neutralizes <c>@</c> mentions.</summary>
-    public static string Sanitize(string text, int maxLength)
-    {
-        var single = Fingerprint.NormalizeWhitespace(text);
-        if (single.Length > maxLength)
+        if (end < 0)
         {
-            single = single[..(maxLength - 1)] + "…";
+            return null;
         }
 
+        try
+        {
+            return JsonSerializer.Deserialize<SummaryRecord>(summary[(start + RecordStart.Length)..end], ReviewResult.JsonOptions);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Collapses whitespace, caps the length, escapes HTML, neutralizes <c>@</c> mentions, and escapes square brackets
+    /// so the text cannot form Markdown links or images.
+    /// </summary>
+    public static string Sanitize(string text, int maxLength)
+    {
         // A zero-width space after @ keeps the text readable without notifying anyone.
-        return WebUtility.HtmlEncode(single).Replace("@", "@&#8203;", StringComparison.Ordinal);
+        return WebUtility.HtmlEncode(Cap(text, maxLength))
+            .Replace("@", "@&#8203;", StringComparison.Ordinal)
+            .Replace("[", "\\[", StringComparison.Ordinal)
+            .Replace("]", "\\]", StringComparison.Ordinal);
+    }
+
+    private static string Cap(string text, int maxLength)
+    {
+        var single = Fingerprint.NormalizeWhitespace(text);
+        return single.Length > maxLength ? single[..(maxLength - 1)] + "…" : single;
     }
 
     private static StringBuilder Header(string headSha, ReviewResult result, string state)
@@ -213,9 +229,10 @@ public static partial class CommentTemplates
 
     private static string Short(string sha) => sha.Length > 12 ? sha[..12] : sha;
 
-    private static string Sha(string sha) => Code(Sanitize(sha, 64));
+    private static string Sha(string sha) => Code(sha, 64);
 
-    private static string Code(string text) => "`" + text.Replace("`", "'", StringComparison.Ordinal) + "`";
+    // Markdown shows a code span's content literally, so HTML and mentions are inert there and are not escaped.
+    private static string Code(string text, int maxLength) => "`" + Cap(text, maxLength).Replace("`", "'", StringComparison.Ordinal) + "`";
 
     [GeneratedRegex(@"^<!-- integricode:finding:(?<fingerprint>[0-9a-f]{64}) -->")]
     private static partial Regex FindingMarkerPattern();

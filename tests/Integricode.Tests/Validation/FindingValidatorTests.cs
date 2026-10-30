@@ -50,7 +50,9 @@ public class FindingValidatorTests
     [InlineData("The total applies every discounts.")]
     [InlineData("the total applies every discount.")]
     [InlineData("Totals apply discounts.")]
-    public void A_quote_not_in_the_requirement_is_dropped(string quote)
+    [InlineData("the total")]
+    [InlineData("  The  ")]
+    public void A_quote_not_in_the_requirement_or_too_short_to_place_is_dropped(string quote)
     {
         AssertDropped(Validator().Validate([Mismatch(quote)]), DropReason.QuoteNotFound);
     }

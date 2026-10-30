@@ -15,12 +15,15 @@ public static class ChatClientFactory
     public const string AzureOpenAi = "azure-openai";
     public const string Anthropic = "anthropic";
 
+    /// <summary>The output limit sent to Anthropic, which requires one and whose adapter otherwise sends 1,024 tokens.</summary>
+    public const int AnthropicMaxOutputTokens = 8192;
+
     /// <summary>Creates the provider's chat client with SDK retries off and Integricode's single retry on top.</summary>
     /// <param name="provider"><c>openai</c>, <c>azure-openai</c>, or <c>anthropic</c>.</param>
     /// <param name="model">The model, or the Azure deployment name.</param>
     /// <param name="endpoint">Optional for OpenAI and Anthropic; the Azure resource or v1 endpoint for Azure OpenAI.</param>
     /// <param name="apiKey">The model provider key.</param>
-    /// <exception cref="ArgumentException">The provider is unknown or a required value is missing.</exception>
+    /// <exception cref="ArgumentException">The provider is unknown, a required value is missing, or the endpoint is not an absolute URL.</exception>
     public static IChatClient Create(string provider, string model, string? endpoint, string apiKey)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(provider);
@@ -28,7 +31,7 @@ public static class ChatClientFactory
         ArgumentException.ThrowIfNullOrWhiteSpace(apiKey);
         var inner = provider.Trim().ToLowerInvariant() switch
         {
-            OpenAi => CreateOpenAi(model, string.IsNullOrWhiteSpace(endpoint) ? null : new Uri(endpoint), apiKey),
+            OpenAi => CreateOpenAi(model, string.IsNullOrWhiteSpace(endpoint) ? null : ParseEndpoint(endpoint), apiKey),
             AzureOpenAi => CreateOpenAi(model, AzureV1Endpoint(endpoint), apiKey),
             Anthropic => CreateAnthropic(model, endpoint, apiKey),
             _ => throw new ArgumentException($"Unknown model provider '{provider}'; use {OpenAi}, {AzureOpenAi}, or {Anthropic}.", nameof(provider)),
@@ -44,9 +47,20 @@ public static class ChatClientFactory
             throw new ArgumentException("The azure-openai provider requires --model-endpoint.", nameof(endpoint));
         }
 
-        var trimmed = endpoint.Trim().TrimEnd('/');
+        var trimmed = ParseEndpoint(endpoint).AbsoluteUri.TrimEnd('/');
         return new Uri(trimmed.EndsWith("/openai/v1", StringComparison.OrdinalIgnoreCase) ? trimmed + "/" : trimmed + "/openai/v1/");
     }
+
+    /// <summary>Applies Integricode's default output limit when the caller sets none.</summary>
+    internal static IChatClient WithAnthropicOutputLimit(IChatClient client) => client
+        .AsBuilder()
+        .ConfigureOptions(options => options.MaxOutputTokens ??= AnthropicMaxOutputTokens)
+        .Build();
+
+    private static Uri ParseEndpoint(string endpoint) =>
+        Uri.TryCreate(endpoint.Trim(), UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp)
+            ? uri
+            : throw new ArgumentException("--model-endpoint must be an absolute http or https URL.", nameof(endpoint));
 
     private static IChatClient CreateOpenAi(string model, Uri? endpoint, string apiKey)
     {
@@ -64,10 +78,10 @@ public static class ChatClientFactory
         var options = new ClientOptions { ApiKey = apiKey, MaxRetries = 0 };
         if (!string.IsNullOrWhiteSpace(endpoint))
         {
-            options.BaseUrl = endpoint;
+            options.BaseUrl = ParseEndpoint(endpoint).AbsoluteUri;
         }
 
-        return new AnthropicClient(options).AsIChatClient(model);
+        return WithAnthropicOutputLimit(new AnthropicClient(options).AsIChatClient(model));
     }
 
     /// <summary>The HTTP status of a provider failure, looking through the SDKs' exception types.</summary>

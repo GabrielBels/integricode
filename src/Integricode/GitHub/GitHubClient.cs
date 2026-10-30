@@ -18,6 +18,11 @@ public sealed partial class GitHubClient
     private const string MinimizeOutdated =
         "mutation($id: ID!) { minimizeComment(input: {subjectId: $id, classifier: OUTDATED}) { minimizedComment { isMinimized } } }";
 
+    private const string MinimizedState =
+        "query($ids: [ID!]!) { nodes(ids: $ids) { ... on PullRequestReviewComment { id isMinimized } } }";
+
+    private const int MaxNodesPerQuery = 100;
+
     private readonly HttpClient http;
     private readonly Uri apiBaseUrl;
     private readonly Uri graphqlUrl;
@@ -99,13 +104,33 @@ public sealed partial class GitHubClient
     /// <exception cref="GitHubApiException">The call failed or GraphQL returned errors.</exception>
     public async Task MinimizeAsOutdatedAsync(string nodeId, CancellationToken cancellationToken)
     {
-        using var content = JsonContent.Create(new GraphQlRequest(MinimizeOutdated, new GraphQlVariables(nodeId)), options: Json);
-        using var response = await SendAsync(HttpMethod.Post, graphqlUrl, content, cancellationToken);
-        var result = await ReadAsync<GraphQlResponse>(response, cancellationToken);
-        if (result.Errors is { Count: > 0 })
+        await GraphQlAsync<IdVariables, MinimizeData>(new GraphQlRequest<IdVariables>(MinimizeOutdated, new IdVariables(nodeId)), cancellationToken);
+    }
+
+    /// <summary>The node IDs, among the given review comments, that are minimized.</summary>
+    /// <exception cref="GitHubApiException">The call failed or GraphQL returned errors.</exception>
+    public async Task<IReadOnlySet<string>> GetMinimizedAsync(IReadOnlyList<string> nodeIds, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(nodeIds);
+        var minimized = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var chunk in nodeIds.Chunk(MaxNodesPerQuery))
         {
-            throw new GitHubApiException("POST", graphqlUrl.AbsolutePath, HttpStatusCode.UnprocessableEntity);
+            var data = await GraphQlAsync<IdsVariables, NodesData>(new GraphQlRequest<IdsVariables>(MinimizedState, new IdsVariables(chunk)), cancellationToken);
+            minimized.UnionWith(data.Nodes.Where(node => node is { IsMinimized: true, Id: not null }).Select(node => node!.Id!));
         }
+
+        return minimized;
+    }
+
+    private async Task<TData> GraphQlAsync<TVariables, TData>(GraphQlRequest<TVariables> request, CancellationToken cancellationToken)
+        where TData : class
+    {
+        using var content = JsonContent.Create(request, options: Json);
+        using var response = await SendAsync(HttpMethod.Post, graphqlUrl, content, cancellationToken);
+        var result = await ReadAsync<GraphQlResponse<TData>>(response, cancellationToken);
+        return result.Errors is { Count: > 0 } || result.Data is null
+            ? throw new GitHubApiException("POST", graphqlUrl.AbsolutePath, HttpStatusCode.UnprocessableEntity)
+            : result.Data;
     }
 
     private async Task<IReadOnlyList<GitHubComment>> ListCommentsAsync(Uri firstPage, CancellationToken cancellationToken)
@@ -205,13 +230,26 @@ public sealed partial class GitHubClient
 
     private sealed record ReviewCommentBody(string Path, int Line, string Side, string Body);
 
-    private sealed record GraphQlRequest(
+    // GraphQL names are camelCase, so they are spelled out instead of following the REST snake_case policy.
+    private sealed record GraphQlRequest<TVariables>(
         [property: JsonPropertyName("query")] string Query,
-        [property: JsonPropertyName("variables")] GraphQlVariables Variables);
+        [property: JsonPropertyName("variables")] TVariables Variables);
 
-    private sealed record GraphQlVariables([property: JsonPropertyName("id")] string Id);
+    private sealed record IdVariables([property: JsonPropertyName("id")] string Id);
 
-    private sealed record GraphQlResponse(IReadOnlyList<JsonElement>? Errors);
+    private sealed record IdsVariables([property: JsonPropertyName("ids")] IReadOnlyList<string> Ids);
+
+    private sealed record GraphQlResponse<TData>(
+        [property: JsonPropertyName("data")] TData? Data,
+        [property: JsonPropertyName("errors")] IReadOnlyList<JsonElement>? Errors);
+
+    private sealed record MinimizeData([property: JsonPropertyName("minimizeComment")] JsonElement MinimizeComment);
+
+    private sealed record NodesData([property: JsonPropertyName("nodes")] IReadOnlyList<MinimizableNode?> Nodes);
+
+    private sealed record MinimizableNode(
+        [property: JsonPropertyName("id")] string? Id,
+        [property: JsonPropertyName("isMinimized")] bool IsMinimized);
 }
 
 /// <summary>An issue or review comment; <see cref="Path"/> and <see cref="Line"/> are set for review comments.</summary>

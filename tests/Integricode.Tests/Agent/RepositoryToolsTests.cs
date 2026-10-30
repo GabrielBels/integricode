@@ -156,6 +156,17 @@ public sealed class RepositoryToolsTests : IDisposable
     }
 
     [Fact]
+    public void A_symlink_to_an_excluded_file_is_not_read_by_the_tools_or_as_a_changed_file()
+    {
+        File.CreateSymbolicLink(repository.FullPath("notes.txt"), repository.FullPath(".env"));
+        var tools = Tools();
+
+        Assert.StartsWith("refused: ", tools.ReadFile("notes.txt"));
+        Assert.Null(tools.ReadChangedFile("notes.txt"));
+        Assert.Empty(tools.Chunks);
+    }
+
+    [Fact]
     public async Task The_tools_are_exposed_as_ai_functions()
     {
         var tools = Tools();

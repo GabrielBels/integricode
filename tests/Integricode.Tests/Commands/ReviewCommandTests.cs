@@ -150,10 +150,13 @@ public sealed class ReviewCommandTests : IDisposable
         Assert.Empty(result.Findings);
     }
 
-    [Fact]
-    public async Task A_provider_configuration_error_writes_a_failed_result()
+    [Theory]
+    [InlineData("azure-openai", null)]
+    [InlineData("azure-openai", "shop.openai.azure.com")]
+    [InlineData("gemini", null)]
+    public async Task A_provider_configuration_error_writes_a_failed_result(string provider, string? endpoint)
     {
-        var (exitCode, result) = await RunAsync(options => ChatClientFactory.Create("azure-openai", options.Model, null, "key"));
+        var (exitCode, result) = await RunAsync(options => ChatClientFactory.Create(provider, options.Model, endpoint, "key"));
 
         Assert.Equal(0, exitCode);
         Assert.Equal([ReviewCommand.ProviderConfigurationError], result!.Coverage.Reasons);
@@ -212,6 +215,8 @@ public sealed class ReviewCommandTests : IDisposable
     [Theory]
     [InlineData("--pr", "7", "--model-provider", "openai", "--model", "m")]
     [InlineData("--repo", "octo/shop/../x", "--pr", "7", "--model-provider", "openai", "--model", "m")]
+    [InlineData("--repo", "../..", "--pr", "7", "--model-provider", "openai", "--model", "m")]
+    [InlineData("--repo", "octo/..", "--pr", "7", "--model-provider", "openai", "--model", "m")]
     [InlineData("--repo", "octo/shop", "--pr", "seven", "--model-provider", "openai", "--model", "m")]
     [InlineData("--repo", "octo/shop", "--pr", "99999999999", "--model-provider", "openai", "--model", "m")]
     [InlineData("--repo", "octo/shop", "--pr", "7", "--model", "m")]

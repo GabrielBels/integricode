@@ -65,6 +65,23 @@ public sealed class ReviewWorkflowTests : IDisposable
     }
 
     [Fact]
+    public async Task An_excluded_file_in_the_pull_request_sends_neither_its_diff_nor_its_content()
+    {
+        repository.Write("config/.env.production", "DB_PASSWORD=synthetic-excluded-1a2b\n");
+        var request = Request() with
+        {
+            Files = [.. Request().Files, new PullRequestFile("config/.env.production", "added", "@@ -0,0 +1 @@\n+DB_PASSWORD=synthetic-excluded-1a2b")],
+        };
+        var model = new ScriptedChatClient().ThenText("{\"findings\": []}");
+
+        await Workflow(model).RunAsync(request, CancellationToken.None);
+
+        var prompt = string.Join("\n", model.Calls.Single().Messages.Select(m => m.Text));
+        Assert.Contains("<file-diff path=\"config/.env.production\"", prompt);
+        Assert.DoesNotContain("synthetic-excluded-1a2b", prompt);
+    }
+
+    [Fact]
     public async Task The_model_gets_the_instructions_tools_schema_and_fixed_input_but_not_the_pull_request_text()
     {
         var model = new ScriptedChatClient().ThenText("{\"findings\": []}");

@@ -81,7 +81,7 @@ public sealed partial class FakeGitHub : HttpMessageHandler
             ("PATCH", _) when IssueCommentPath().Match(path) is { Success: true } match => UpdateIssueComment(long.Parse(match.Groups["id"].Value, CultureInfo.InvariantCulture), Read(body)),
             ("GET", _) when path == pulls + "/comments" => Json(new JsonArray([.. ReviewComments.Select(CommentJson)])),
             ("POST", _) when path == pulls + "/reviews" => CreateReview(Read(body)),
-            ("POST", "/graphql") => Minimize(Read(body)),
+            ("POST", "/graphql") => GraphQl(Read(body)),
             _ => new HttpResponseMessage(HttpStatusCode.NotFound),
         };
         response.RequestMessage = request;
@@ -117,11 +117,23 @@ public sealed partial class FakeGitHub : HttpMessageHandler
         return Json(new JsonObject { ["id"] = nextId++ });
     }
 
-    private HttpResponseMessage Minimize(JsonNode body)
+    private HttpResponseMessage GraphQl(JsonNode body)
     {
-        var subject = body["variables"]!["id"]!.GetValue<string>();
-        Minimized.Add(subject);
-        return Json(new JsonObject { ["data"] = new JsonObject { ["minimizeComment"] = new JsonObject { ["minimizedComment"] = new JsonObject { ["isMinimized"] = true } } } });
+        var query = body["query"]!.GetValue<string>();
+        if (query.Contains("minimizeComment", StringComparison.Ordinal))
+        {
+            Minimized.Add(body["variables"]!["id"]!.GetValue<string>());
+            return Json(new JsonObject { ["data"] = new JsonObject { ["minimizeComment"] = new JsonObject { ["minimizedComment"] = new JsonObject { ["isMinimized"] = true } } } });
+        }
+
+        if (query.Contains("nodes(ids:", StringComparison.Ordinal))
+        {
+            var nodes = body["variables"]!["ids"]!.AsArray()
+                .Select(id => (JsonNode?)new JsonObject { ["id"] = id!.GetValue<string>(), ["isMinimized"] = Minimized.Contains(id.GetValue<string>()) });
+            return Json(new JsonObject { ["data"] = new JsonObject { ["nodes"] = new JsonArray([.. nodes]) } });
+        }
+
+        return Json(new JsonObject { ["errors"] = new JsonArray(new JsonObject { ["message"] = "unknown query" }) });
     }
 
     private JsonObject PullRequestJson() => new()

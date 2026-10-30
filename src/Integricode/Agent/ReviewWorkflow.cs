@@ -180,7 +180,7 @@ public sealed class ReviewWorkflow
             : Coverage.Complete;
         var snapshot = new ContextSnapshot(
             request.PullRequest.HeadSha,
-            [.. request.Files.Select(file => new DiffFile(file.Path, file.Patch))],
+            [.. request.Files.Select(file => new DiffFile(file.Path, guard.IsExcluded(file.Path) ? null : file.Patch))],
             context.RequirementText,
             tools.Chunks);
 
@@ -225,7 +225,8 @@ public sealed class ReviewWorkflow
             var changed = diffMap.Get(file.Path)?.ChangedLines ?? new SortedSet<int>();
             prompt.Append("<file-diff path=\"").Append(file.Path).Append("\" status=\"").Append(file.Status)
                 .Append("\" changed-lines=\"").Append(string.Join(',', changed)).Append("\">\n")
-                .Append(file.Patch ?? "(no patch: binary or too large)").Append("\n</file-diff>\n");
+                .Append(guard.IsExcluded(file.Path) ? "(not included: excluded from the review context)" : file.Patch ?? "(no patch: binary or too large)")
+                .Append("\n</file-diff>\n");
         }
 
         prompt.Append("</diff>\n\n<changed-files>\n");

@@ -82,15 +82,19 @@ public sealed class PathGuard
             return PathCheck.Refuse("the path leaves the checkout");
         }
 
-        if (applyExclusions && IsExcluded(normalized))
+        var (linkRefusal, targetPath) = ResolveLinks(segments);
+        if (linkRefusal is not null)
+        {
+            return PathCheck.Refuse(linkRefusal);
+        }
+
+        // Both the requested path and the path a link leads to must be allowed: notes.txt -> .env is still .env.
+        if (applyExclusions && (IsExcluded(normalized) || IsExcluded(targetPath)))
         {
             return PathCheck.Refuse("the path is excluded from the review context");
         }
 
-        var linkRefusal = CheckLinks(segments);
-        return linkRefusal is null
-            ? new PathCheck(true, fullPath, normalized, null)
-            : PathCheck.Refuse(linkRefusal);
+        return new PathCheck(true, fullPath, normalized, null);
     }
 
     /// <summary>Whether a normalized checkout-relative path (forward slashes) matches an exclusion.</summary>
@@ -106,7 +110,8 @@ public sealed class PathGuard
             || pathPatterns.Any(pattern => pattern.IsMatch(relativePath));
     }
 
-    private string? CheckLinks(string[] segments)
+    /// <summary>Follows every symbolic link on the path; returns a refusal, or the checkout-relative path it leads to.</summary>
+    private (string? Refusal, string TargetPath) ResolveLinks(string[] segments)
     {
         var current = Root;
         foreach (var segment in segments)
@@ -121,11 +126,14 @@ public sealed class PathGuard
             var target = info.ResolveLinkTarget(returnFinalTarget: true);
             if (target is null || !IsInside(Path.GetFullPath(target.FullName)))
             {
-                return "a symbolic link leaves the checkout";
+                return ("a symbolic link leaves the checkout", string.Empty);
             }
+
+            current = Path.GetFullPath(target.FullName);
         }
 
-        return null;
+        var relative = Path.GetRelativePath(Root, current).Replace('\\', '/');
+        return (null, relative == "." ? string.Empty : relative);
     }
 
     private bool IsInside(string fullPath)

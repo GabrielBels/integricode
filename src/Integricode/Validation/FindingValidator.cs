@@ -18,13 +18,17 @@ public sealed record ValidationOutcome(IReadOnlyList<Finding> Findings, IReadOnl
 /// <summary>
 /// The provenance check: keeps a proposed finding only when its fields are present, its path is a pull-request file,
 /// its line exists at the head SHA, a bug sits on a changed line, and a mismatch quotes the requirement verbatim
-/// (whitespace-normalized). Findings with the same fingerprint collapse into the first.
+/// (whitespace-normalized, at least <see cref="MinQuoteLength"/> characters). Findings with the same fingerprint collapse
+/// into the first.
 /// </summary>
 /// <param name="diff">The pull request's diff map.</param>
 /// <param name="requirementText">The requirement text read, or null when none was.</param>
 /// <param name="headLineCount">The number of lines of a pull-request file at the head SHA, or null when it does not exist.</param>
 public sealed class FindingValidator(DiffMap diff, string? requirementText, Func<string, int?> headLineCount)
 {
+    /// <summary>A shorter quote, such as "the", is found in any requirement and proves nothing about where it came from.</summary>
+    public const int MinQuoteLength = 12;
+
     private readonly string? normalizedRequirement = requirementText is null ? null : Fingerprint.NormalizeWhitespace(requirementText);
 
     public ValidationOutcome Validate(IEnumerable<ProposedFinding>? proposed)
@@ -83,7 +87,7 @@ public sealed class FindingValidator(DiffMap diff, string? requirementText, Func
         if (kind == FindingKind.RequirementMismatch)
         {
             quote = Fingerprint.NormalizeWhitespace(candidate.RequirementQuote!);
-            if (normalizedRequirement is null || !normalizedRequirement.Contains(quote, StringComparison.Ordinal))
+            if (normalizedRequirement is null || quote.Length < MinQuoteLength || !normalizedRequirement.Contains(quote, StringComparison.Ordinal))
             {
                 return (null, DropReason.QuoteNotFound);
             }

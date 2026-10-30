@@ -46,6 +46,36 @@ public class ChatClientFactoryTests
     }
 
     [Fact]
+    public void Anthropic_gets_an_output_limit_above_the_adapter_default()
+    {
+        var client = ChatClientFactory.Create("anthropic", "claude-test", null, "test-key");
+
+        Assert.NotNull(client.GetService<ConfigureOptionsChatClient>());
+    }
+
+    [Fact]
+    public async Task The_anthropic_output_limit_applies_only_when_none_is_set()
+    {
+        var inner = new ScriptedChatClient().ThenText("a").ThenText("b");
+        var client = ChatClientFactory.WithAnthropicOutputLimit(inner);
+
+        await client.GetResponseAsync("hi");
+        await client.GetResponseAsync("hi", new ChatOptions { MaxOutputTokens = 100 });
+
+        Assert.Equal(ChatClientFactory.AnthropicMaxOutputTokens, inner.Calls[0].Options?.MaxOutputTokens);
+        Assert.Equal(100, inner.Calls[1].Options?.MaxOutputTokens);
+    }
+
+    [Theory]
+    [InlineData("openai", "api.openai.test/v1")]
+    [InlineData("azure-openai", "shop.openai.azure.com")]
+    [InlineData("anthropic", "ftp://api.anthropic.test")]
+    public void An_endpoint_that_is_not_an_absolute_http_url_is_rejected(string provider, string endpoint)
+    {
+        Assert.Throws<ArgumentException>(() => ChatClientFactory.Create(provider, "m", endpoint, "k"));
+    }
+
+    [Fact]
     public void Every_provider_is_wrapped_in_the_single_retry()
     {
         foreach (var (provider, endpoint) in new[] { ("openai", (string?)null), ("azure-openai", "https://x.openai.azure.com"), ("anthropic", null) })

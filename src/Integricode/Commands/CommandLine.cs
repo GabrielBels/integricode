@@ -70,7 +70,9 @@ public sealed partial class CommandLine
     public string Repository()
     {
         var repository = Required("repo");
-        return RepositoryName().IsMatch(repository) ? repository : throw new UsageException("Option --repo must be owner/name.");
+        return RepositoryName().IsMatch(repository) && !repository.Split('/').Any(part => part is "." or "..")
+            ? repository
+            : throw new UsageException("Option --repo must be owner/name.");
     }
 
     public int PullRequestNumber()
