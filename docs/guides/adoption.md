@@ -29,7 +29,7 @@ The model and Jira secrets reach only the `review` job, which cannot write to th
 
 ## 2. Add the Caller Workflow
 
-Create `.github/workflows/integricode.yml`:
+Create `.github/workflows/integricode.yml` on the default branch, since comment-triggered runs use the default branch's copy:
 
 ```yaml
 name: Integricode
