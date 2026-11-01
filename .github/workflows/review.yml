@@ -1,0 +1,257 @@
+name: Integricode review
+
+# Reusable workflow (ADR-001): the `review` job holds the model and Jira secrets with read-only permissions; the
+# `comment` job holds the only write permission and no tracker or model secret. See docs/guides/adoption.md.
+
+on:
+  workflow_call:
+    inputs:
+      model-provider:
+        description: Model provider, one of openai, azure-openai, anthropic.
+        type: string
+        required: true
+      model:
+        description: Model or Azure OpenAI deployment name.
+        type: string
+        required: true
+      model-endpoint:
+        description: Endpoint URL; required for azure-openai, optional otherwise.
+        type: string
+        default: ''
+      requirements-file:
+        description: Path of the file that holds the REQ entries.
+        type: string
+        default: docs/requirements.md
+      jira-base-url:
+        description: Jira Cloud site, such as https://example.atlassian.net; empty turns the Jira source off.
+        type: string
+        default: ''
+      jira-acceptance-criteria-field:
+        description: Jira custom field that holds the acceptance criteria; empty reads them from the description.
+        type: string
+        default: ''
+      exclude:
+        description: Extra paths the review never reads, one glob per line.
+        type: string
+        default: ''
+      max-context-chars:
+        description: Characters the review may read before its coverage becomes incomplete.
+        type: number
+        default: 400000
+      max-tool-calls:
+        description: Repository tool calls the review may make before its coverage becomes incomplete.
+        type: number
+        default: 40
+    secrets:
+      model-api-key:
+        description: API key of the model provider.
+        required: false
+      packages-token:
+        description: Personal access token with read:packages that installs the Integricode tool.
+        required: false
+      jira-email:
+        description: E-mail of the read-only Jira account.
+        required: false
+      jira-api-token:
+        description: API token of the read-only Jira account.
+        required: false
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      decision: ${{ steps.gate.outputs.decision }}
+      pr: ${{ steps.gate.outputs.pr }}
+    steps:
+      # The gate runs first and reads no secret: a fork's run has none, and a fork is never reviewed (FR-1 to FR-3).
+      # Event fields are read from the event file, never interpolated into the script.
+      - name: Gate
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          event="$GITHUB_EVENT_PATH"
+          action=$(jq -r '.action // ""' "$event")
+          pr=""
+          case "$GITHUB_EVENT_NAME" in
+            pull_request)
+              if [ "$action" = ready_for_review ]; then
+                pr=$(jq -r '.pull_request.number' "$event")
+              fi
+              ;;
+            issue_comment)
+              if [ "$action" = created ] \
+                && jq -e '.issue.pull_request != null and (.comment.body // "" | contains("@integricode review"))' "$event" > /dev/null; then
+                author=$(jq -r '.comment.user.login' "$event")
+                # The legacy permission field maps maintain to write; a non-collaborator may get an error, read as none.
+                permission=$(gh api "repos/$GITHUB_REPOSITORY/collaborators/$author/permission" --jq '.permission' 2> /dev/null) || permission=none
+                case "$permission" in
+                  admin|maintain|write) pr=$(jq -r '.issue.number' "$event") ;;
+                  *) echo "::notice::Ignored: $author has $permission permission; the review command needs write access." ;;
+                esac
+              fi
+              ;;
+          esac
+
+          decision=none
+          if [ -n "$pr" ]; then
+            pull=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$pr")
+            head_repo=$(jq -r '.head.repo.full_name // ""' <<< "$pull")
+            base_repo=$(jq -r '.base.repo.full_name' <<< "$pull")
+            if [ "$head_repo" != "$base_repo" ]; then
+              echo "::notice::Skipped by policy: pull request #$pr is from a fork."
+              printf '### Integricode review\n\nSkipped by policy: pull request #%s is from a fork, and forks are not reviewed.\n' "$pr" >> "$GITHUB_STEP_SUMMARY"
+              # Only a comment run can publish: a fork's pull_request run has a read-only token.
+              if [ "$GITHUB_EVENT_NAME" = issue_comment ]; then
+                decision=skipped-by-policy
+              fi
+            else
+              decision=review
+              echo "head-sha=$(jq -r '.head.sha' <<< "$pull")" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "::notice::Nothing to review for $GITHUB_EVENT_NAME ($action)."
+          fi
+
+          echo "decision=$decision" >> "$GITHUB_OUTPUT"
+          echo "pr=$pr" >> "$GITHUB_OUTPUT"
+
+      - name: Set up .NET
+        if: steps.gate.outputs.decision == 'review'
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      # Installed before the checkout and outside it, so the reviewed repository's NuGet and SDK settings do not apply.
+      - name: Install Integricode
+        if: steps.gate.outputs.decision == 'review'
+        working-directory: ${{ runner.temp }}
+        env:
+          PACKAGES_TOKEN: ${{ secrets.packages-token }}
+        run: |
+          set -euo pipefail
+          if [ -z "$PACKAGES_TOKEN" ]; then
+            echo "::error::The packages-token secret is not set."
+            exit 1
+          fi
+          # Only the GitHub Packages source: a same-named package on nuget.org must never satisfy 1.*.
+          config_dir="$RUNNER_TEMP/integricode-nuget"
+          mkdir -p "$config_dir"
+          trap 'rm -rf "$config_dir"' EXIT
+          printf '<?xml version="1.0" encoding="utf-8"?>\n<configuration><packageSources><clear /></packageSources></configuration>\n' > "$config_dir/nuget.config"
+          dotnet nuget add source https://nuget.pkg.github.com/GabrielBels/index.json --name integricode --configfile "$config_dir/nuget.config" \
+            --username integricode --password "$PACKAGES_TOKEN" --store-password-in-clear-text
+          dotnet tool install Integricode --version '1.*' --tool-path "$RUNNER_TEMP/integricode" --configfile "$config_dir/nuget.config"
+
+      - name: Check out the pull request
+        if: steps.gate.outputs.decision == 'review'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.gate.outputs.head-sha }}
+          persist-credentials: false
+
+      - name: Review
+        if: steps.gate.outputs.decision == 'review'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          INTEGRICODE_MODEL_API_KEY: ${{ secrets.model-api-key }}
+          JIRA_EMAIL: ${{ secrets.jira-email }}
+          JIRA_API_TOKEN: ${{ secrets.jira-api-token }}
+          PR: ${{ steps.gate.outputs.pr }}
+          HEAD_SHA: ${{ steps.gate.outputs.head-sha }}
+          MODEL_PROVIDER: ${{ inputs.model-provider }}
+          MODEL: ${{ inputs.model }}
+          MODEL_ENDPOINT: ${{ inputs.model-endpoint }}
+          REQUIREMENTS_FILE: ${{ inputs.requirements-file }}
+          JIRA_BASE_URL: ${{ inputs.jira-base-url }}
+          JIRA_ACCEPTANCE_CRITERIA_FIELD: ${{ inputs.jira-acceptance-criteria-field }}
+          EXCLUDE: ${{ inputs.exclude }}
+          MAX_CONTEXT_CHARS: ${{ inputs.max-context-chars }}
+          MAX_TOOL_CALLS: ${{ inputs.max-tool-calls }}
+        run: |
+          set -euo pipefail
+          args=(review --repo "$GITHUB_REPOSITORY" --pr "$PR" --workspace "$GITHUB_WORKSPACE" --out "$RUNNER_TEMP/result.json"
+            --model-provider "$MODEL_PROVIDER" --model "$MODEL" --requirements-file "$REQUIREMENTS_FILE"
+            --max-context-chars "$MAX_CONTEXT_CHARS" --max-tool-calls "$MAX_TOOL_CALLS")
+          if [ -n "$MODEL_ENDPOINT" ]; then args+=(--model-endpoint "$MODEL_ENDPOINT"); fi
+          if [ -n "$EXCLUDE" ]; then args+=(--exclude "$EXCLUDE"); fi
+          if [ -n "$JIRA_BASE_URL" ]; then args+=(--jira-base-url "$JIRA_BASE_URL"); fi
+          if [ -n "$JIRA_ACCEPTANCE_CRITERIA_FIELD" ]; then args+=(--jira-acceptance-criteria-field "$JIRA_ACCEPTANCE_CRITERIA_FIELD"); fi
+          "$RUNNER_TEMP/integricode/integricode" "${args[@]}"
+
+          # The tool reads the head SHA from the API and the code from the checkout; they must be the same commit.
+          result_sha=$(jq -r '.headSha' "$RUNNER_TEMP/result.json")
+          if [ "$result_sha" != "$HEAD_SHA" ]; then
+            echo "::error::Pull request #$PR moved from $HEAD_SHA to $result_sha during the review; comment @integricode review to review the new head."
+            exit 1
+          fi
+
+      - name: Upload the result
+        if: steps.gate.outputs.decision == 'review'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: integricode-result
+          path: ${{ runner.temp }}/result.json
+          if-no-files-found: error
+          retention-days: 1
+
+  comment:
+    needs: review
+    if: needs.review.outputs.decision == 'review' || needs.review.outputs.decision == 'skipped-by-policy'
+    # Overlapping runs on one pull request publish one at a time, so they find and update the same summary.
+    concurrency:
+      group: integricode-comment-${{ github.repository }}-${{ needs.review.outputs.pr }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install Integricode
+        working-directory: ${{ runner.temp }}
+        env:
+          PACKAGES_TOKEN: ${{ secrets.packages-token }}
+        run: |
+          set -euo pipefail
+          if [ -z "$PACKAGES_TOKEN" ]; then
+            echo "::error::The packages-token secret is not set."
+            exit 1
+          fi
+          # Only the GitHub Packages source: a same-named package on nuget.org must never satisfy 1.*.
+          config_dir="$RUNNER_TEMP/integricode-nuget"
+          mkdir -p "$config_dir"
+          trap 'rm -rf "$config_dir"' EXIT
+          printf '<?xml version="1.0" encoding="utf-8"?>\n<configuration><packageSources><clear /></packageSources></configuration>\n' > "$config_dir/nuget.config"
+          dotnet nuget add source https://nuget.pkg.github.com/GabrielBels/index.json --name integricode --configfile "$config_dir/nuget.config" \
+            --username integricode --password "$PACKAGES_TOKEN" --store-password-in-clear-text
+          dotnet tool install Integricode --version '1.*' --tool-path "$RUNNER_TEMP/integricode" --configfile "$config_dir/nuget.config"
+
+      - name: Download the result
+        if: needs.review.outputs.decision == 'review'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: integricode-result
+          path: ${{ runner.temp }}
+
+      - name: Publish
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR: ${{ needs.review.outputs.pr }}
+          DECISION: ${{ needs.review.outputs.decision }}
+        run: |
+          set -euo pipefail
+          if [ "$DECISION" = review ]; then
+            "$RUNNER_TEMP/integricode/integricode" comment --repo "$GITHUB_REPOSITORY" --pr "$PR" --result "$RUNNER_TEMP/result.json"
+          else
+            "$RUNNER_TEMP/integricode/integricode" comment --repo "$GITHUB_REPOSITORY" --pr "$PR" --skipped-by-policy fork
+          fi

@@ -1,0 +1,58 @@
+name: Release
+
+# Publishes the tool when the owner pushes a vX.Y.Z tag (ADR-003), then moves the vX tag that callers use.
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Credentials stay in the checkout: the last step pushes the vX tag.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Read the version
+        id: version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME is not vX.Y.Z."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "major=${version%%.*}" >> "$GITHUB_OUTPUT"
+      - name: Build
+        run: dotnet build Integricode.slnx -c Release -p:Version=${{ steps.version.outputs.version }}
+      - name: Test
+        run: dotnet test Integricode.slnx -c Release --no-build
+      - name: Pack
+        run: dotnet pack src/Integricode -c Release --no-build -o artifacts -p:Version=${{ steps.version.outputs.version }}
+      - name: Publish to GitHub Packages
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          dotnet nuget push "artifacts/Integricode.${{ steps.version.outputs.version }}.nupkg"
+          --source https://nuget.pkg.github.com/GabrielBels/index.json --api-key "$GITHUB_TOKEN" --skip-duplicate
+      # A fix released on an older minor must not move callers back to an older workflow.
+      - name: Move the major tag
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          MAJOR: ${{ steps.version.outputs.major }}
+        run: |
+          set -euo pipefail
+          latest=$(git ls-remote --tags --refs origin "v$MAJOR.*" | sed 's|.*refs/tags/v||' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+          if [ "$latest" != "$VERSION" ]; then
+            echo "::notice::v$MAJOR stays: v$latest is newer than v$VERSION."
+            exit 0
+          fi
+          git tag -f "v$MAJOR" HEAD
+          git push -f origin "refs/tags/v$MAJOR"

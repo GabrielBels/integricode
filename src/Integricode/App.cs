@@ -80,7 +80,7 @@ public sealed class App(HttpMessageHandler httpHandler, Func<string, string, str
                                  [--model-endpoint URL] [--workspace DIR] [--out result.json]
                                  [--requirements-file docs/requirements.md] [--exclude GLOB]...
                                  [--max-context-chars 400000] [--max-tool-calls 40]
-              integricode comment --repo owner/name --pr N [--result result.json]
+              integricode comment --repo owner/name --pr N [--result result.json | --skipped-by-policy fork]
             Environment: GITHUB_TOKEN; {ModelApiKeyVariable} for review; GITHUB_API_URL and GITHUB_GRAPHQL_URL when set.
             """);
         return 2;

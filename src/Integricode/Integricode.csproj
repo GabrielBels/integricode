@@ -9,6 +9,9 @@
     <Version>1.0.0</Version>
     <Authors>GabrielBels</Authors>
     <Description>Reviews a pull request for bugs and against its linked REQ entry or Jira issue.</Description>
+    <!-- GitHub Packages links the package to this repository, so its access follows the repository's. -->
+    <RepositoryUrl>https://github.com/GabrielBels/integricode</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
   <ItemGroup>
