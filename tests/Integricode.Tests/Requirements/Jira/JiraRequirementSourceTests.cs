@@ -157,6 +157,56 @@ public sealed class JiraRequirementSourceTests : IDisposable
         Assert.Equal("Jira issue SHOP-12 unreadable: access denied (HTTP 403) for the Jira account", result.UnreadableReason);
     }
 
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("\"synthetic\"")]
+    [InlineData("null")]
+    [InlineData("{\"key\": \"SHOP-12\"}")]
+    [InlineData("not json")]
+    public async Task An_issue_response_that_is_not_an_issue_is_an_invalid_response(string body)
+    {
+        using var handler = new FakeHttpHandler().On(HttpMethod.Get, "/rest/api/3/issue/SHOP-12?fields=summary,description", _ => FakeHttpHandler.Json(body));
+
+        var result = await new JiraRequirementSource(Client(handler), null).ReadAsync(Link(), CancellationToken.None);
+
+        Assert.Equal("Jira issue SHOP-12 unreadable: invalid response", result.UnreadableReason);
+    }
+
+    [Fact]
+    public async Task A_comment_page_without_a_total_is_an_invalid_response()
+    {
+        using var handler = new FakeHttpHandler()
+            .OnJson(HttpMethod.Get, "/rest/api/3/issue/SHOP-12?fields=summary,description", """{"fields": {"summary": "Cart totals"}}""")
+            .OnJson(HttpMethod.Get, "/rest/api/3/issue/SHOP-12/comment?startAt=0&maxResults=100&orderBy=created", """{"startAt": 0, "comments": [{"body": null}]}""");
+
+        var result = await new JiraRequirementSource(Client(handler), null).ReadAsync(Link(), CancellationToken.None);
+
+        Assert.Equal("Jira issue SHOP-12 unreadable: invalid response", result.UnreadableReason);
+    }
+
+    [Fact]
+    public async Task An_unreachable_jira_names_only_the_exception_type()
+    {
+        using var handler = new FakeHttpHandler().On(HttpMethod.Get, "/rest/api/3/issue/SHOP-12?fields=summary,description", _ => throw new HttpRequestException("SYNTHETIC-CONNECTION-DETAIL"));
+
+        var result = await new JiraRequirementSource(Client(handler), null).ReadAsync(Link(), CancellationToken.None);
+
+        Assert.Equal("Jira issue SHOP-12 unreadable: Jira unreachable (HttpRequestException)", result.UnreadableReason);
+    }
+
+    [Fact]
+    public async Task An_error_response_body_is_not_carried_into_the_reason()
+    {
+        using var handler = new FakeHttpHandler().On(HttpMethod.Get, "/rest/api/3/issue/SHOP-12?fields=summary,description", _ => FakeHttpHandler.Json("""{"errorMessages": ["SYNTHETIC-ERROR-BODY"]}""", HttpStatusCode.InternalServerError));
+
+        var result = await new JiraRequirementSource(Client(handler), null).ReadAsync(Link(), CancellationToken.None);
+
+        Assert.Equal("Jira issue SHOP-12 unreadable: HTTP 500", result.UnreadableReason);
+    }
+
+    private static JiraClient Client(FakeHttpHandler handler) =>
+        new(new HttpClient(handler, disposeHandler: false), new Uri(FakeJira.BaseUrl), FakeJira.Email, FakeJira.ApiToken);
+
     [Fact]
     public async Task A_timeout_names_its_cause()
     {

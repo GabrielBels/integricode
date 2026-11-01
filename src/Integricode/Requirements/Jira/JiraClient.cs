@@ -47,7 +47,8 @@ public sealed class JiraClient
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         string[] fields = acceptanceCriteriaField is null ? ["summary", "description"] : ["summary", "description", acceptanceCriteriaField];
         using var document = await GetAsync($"rest/api/3/issue/{Uri.EscapeDataString(key)}?fields={string.Join(',', fields.Select(Uri.EscapeDataString))}", cancellationToken);
-        if (!document.RootElement.TryGetProperty("fields", out var values) || values.ValueKind != JsonValueKind.Object)
+        var root = document.RootElement;
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("fields", out var values) || values.ValueKind != JsonValueKind.Object)
         {
             throw new JsonException("The Jira issue response has no fields object.");
         }
@@ -63,7 +64,7 @@ public sealed class JiraClient
     /// read: authors never leave this method.
     /// </summary>
     /// <exception cref="JiraApiException">Jira answered with a non-success status.</exception>
-    /// <exception cref="JsonException">A response is not a comment page.</exception>
+    /// <exception cref="JsonException">A response is not a comment page, or has no total.</exception>
     public async Task<IReadOnlyList<JsonElement>> GetCommentBodiesAsync(string key, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
@@ -85,8 +86,13 @@ public sealed class JiraClient
                 count++;
             }
 
-            var total = Field(page, "total") is { ValueKind: JsonValueKind.Number } number && number.TryGetInt32(out var value) ? value : bodies.Count;
-            if (count == 0 || bodies.Count >= total)
+            // Without the total, a partial read could not be told from a complete one.
+            if (Field(page, "total") is not { ValueKind: JsonValueKind.Number } total || !total.TryGetInt32(out var totalCount))
+            {
+                throw new JsonException("The Jira comments response has no total.");
+            }
+
+            if (count == 0 || bodies.Count >= totalCount)
             {
                 return bodies;
             }

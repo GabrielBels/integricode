@@ -110,6 +110,22 @@ public sealed class AdfTextTests
     }
 
     [Fact]
+    public void Inline_nodes_that_keep_their_text_in_attributes_give_it()
+    {
+        var text = Convert("""
+            {"type": "doc", "version": 1, "content": [
+              {"type": "paragraph", "content": [
+                {"type": "text", "text": "Ship before "}, {"type": "date", "attrs": {"timestamp": "1798761600000"}},
+                {"type": "text", "text": " once "}, {"type": "status", "attrs": {"text": "APPROVED", "color": "green"}},
+                {"type": "text", "text": ", per "}, {"type": "inlineCard", "attrs": {"url": "https://wiki.example.test/cart-rules"}},
+                {"type": "text", "text": " "}, {"type": "emoji", "attrs": {"shortName": ":tada:"}},
+                {"type": "date", "attrs": {"timestamp": "not a number"}}]}]}
+            """);
+
+        Assert.Equal("Ship before 2027-01-01 once APPROVED, per https://wiki.example.test/cart-rules :tada:", text);
+    }
+
+    [Fact]
     public void A_mention_does_not_carry_the_persons_name()
     {
         var text = Convert("""
