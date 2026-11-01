@@ -113,9 +113,9 @@ public sealed class ReviewWorkflow
         {
             var read = await requirementSources.ReadAsync(link, cancellationToken);
             requirementText = read.Text;
-            if (!read.IsRead)
+            if (read.UnreadableReason is { } reason)
             {
-                missing.Add(read.UnreadableReason!);
+                missing.Add(reason);
             }
         }
 

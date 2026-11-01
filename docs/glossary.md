@@ -10,7 +10,8 @@ Domain terms and the names they have in code. PRDs, requirements, and new code u
 | Ready for review | The moment the author marks a pull request as no longer a draft; the review runs then, before the author requests a reviewer. | - |
 | Review command | The pull-request comment `@integricode review`, which starts a review when written by a person with write access to the repository. | - |
 | Head SHA | The commit a review was run against; a review result is valid only for that commit. | `HeadSha` |
-| Linked issue | The Jira issue the pull request declares it implements. | `RequirementKind.JiraIssue` |
+| Linked issue | The Jira issue the pull request declares it implements. | `RequirementKind.JiraIssue`, `JiraRequirementSource` |
+| Atlassian Document Format | The JSON rich-text format of Jira Cloud descriptions, comments, and rich-text fields; converted to plain text before review. | `AdfText` |
 | REQ entry | A requirement in a dev-flow project's `docs/requirements.md`, with its acceptance criteria; the requirement source in the owner's personal repositories. | `RequirementKind.ReqEntry`, `ReqEntrySource` |
 | Acceptance criteria | The conditions written on the linked issue or REQ entry that the change must satisfy. | - |
 | Clarification | A comment or answer on the linked issue that refines or changes what was requested. | - |

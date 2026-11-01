@@ -37,12 +37,12 @@
 **Source**: PRD-001 (FR-5)
 
 **Acceptance Criteria**:
-- [ ] With `jira-base-url`, `JIRA_EMAIL`, and `JIRA_API_TOKEN` set, a Jira key yields a requirement made of the issue's summary, description, acceptance criteria, and all comments as clarifications (FR-5).
-- [ ] Acceptance criteria come from the field named by `jira-acceptance-criteria-field` when set, and from the description otherwise.
-- [ ] Atlassian Document Format is converted to plain text, keeping paragraphs, headings, lists, and code blocks; comment author names are not included.
-- [ ] Only HTTP GET requests reach Jira.
-- [ ] A 401, 403, 404, timeout, or missing Jira input yields incomplete coverage naming the cause, and bug findings are still reported.
-- [ ] Requirement quotes from Jira text pass the same provenance check as REQ entries.
+- [x] With `jira-base-url`, `JIRA_EMAIL`, and `JIRA_API_TOKEN` set, a Jira key yields a requirement made of the issue's summary, description, acceptance criteria, and all comments as clarifications (FR-5).
+- [x] Acceptance criteria come from the field named by `jira-acceptance-criteria-field` when set, and from the description otherwise.
+- [x] Atlassian Document Format is converted to plain text, keeping paragraphs, headings, lists, and code blocks; comment author names are not included.
+- [x] Only HTTP GET requests reach Jira.
+- [x] A 401, 403, 404, timeout, or missing Jira input yields incomplete coverage naming the cause, and bug findings are still reported.
+- [x] Requirement quotes from Jira text pass the same provenance check as REQ entries.
 
 **Context/Notes**: Requires REQ-001. Jira Cloud REST API v3 with basic authentication (e-mail and API token of a dedicated read-only account). Test data is synthetic; no real Jira content enters the repository. Breakdown: [REQ-002](breakdowns/REQ-002-breakdown.md).
 

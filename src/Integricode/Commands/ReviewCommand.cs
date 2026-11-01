@@ -1,15 +1,17 @@
 using System.Globalization;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Integricode.Agent;
 using Integricode.Domain;
 using Integricode.GitHub;
 using Integricode.Requirements;
+using Integricode.Requirements.Jira;
 using Microsoft.Extensions.AI;
 
 namespace Integricode.Commands;
 
 /// <summary>The <c>review</c> command's options (FR-16 inputs reach the tool as arguments).</summary>
-public sealed record ReviewOptions(
+public sealed partial record ReviewOptions(
     string Repository,
     int PullRequest,
     string Workspace,
@@ -20,14 +22,16 @@ public sealed record ReviewOptions(
     string RequirementsFile,
     IReadOnlyList<string> Exclude,
     long MaxContextChars,
-    int MaxToolCalls)
+    int MaxToolCalls,
+    Uri? JiraBaseUrl = null,
+    string? JiraAcceptanceCriteriaField = null)
 {
     public const string DefaultRequirementsFile = "docs/requirements.md";
 
     private static readonly IReadOnlySet<string> Allowed = new HashSet<string>(StringComparer.Ordinal)
     {
         "repo", "pr", "workspace", "out", "model-provider", "model", "model-endpoint", "requirements-file",
-        "exclude", "max-context-chars", "max-tool-calls",
+        "exclude", "max-context-chars", "max-tool-calls", "jira-base-url", "jira-acceptance-criteria-field",
     };
 
     /// <exception cref="UsageException">An option is missing or invalid.</exception>
@@ -45,8 +49,24 @@ public sealed record ReviewOptions(
             commandLine.Optional("requirements-file") ?? DefaultRequirementsFile,
             [.. commandLine.All("exclude").SelectMany(SplitGlobs)],
             commandLine.Number("max-context-chars", ContextBudget.DefaultMaxCharacters, minimum: 0),
-            (int)commandLine.Number("max-tool-calls", ContextBudget.DefaultMaxToolCalls, minimum: 0, maximum: int.MaxValue));
+            (int)commandLine.Number("max-tool-calls", ContextBudget.DefaultMaxToolCalls, minimum: 0, maximum: int.MaxValue),
+            JiraSite(commandLine.Optional("jira-base-url")),
+            JiraField(commandLine.Optional("jira-acceptance-criteria-field")));
     }
+
+    // The site receives the Jira credentials, so only an https origin is accepted.
+    private static Uri? JiraSite(string? text) => text is null ? null
+        : Uri.TryCreate(text, UriKind.Absolute, out var site) && site.Scheme == Uri.UriSchemeHttps && site.UserInfo.Length == 0 && site.Query.Length == 0 && site.Fragment.Length == 0
+            ? site
+            : throw new UsageException("Option --jira-base-url must be an https URL, such as https://example.atlassian.net.");
+
+    // The field ID becomes part of the issue request's field list, so nothing but a field ID is accepted.
+    private static string? JiraField(string? text) => text is null || JiraFieldId().IsMatch(text)
+        ? text
+        : throw new UsageException("Option --jira-acceptance-criteria-field must be a Jira field ID, such as customfield_10042.");
+
+    [GeneratedRegex("^[A-Za-z0-9_]+$")]
+    private static partial Regex JiraFieldId();
 
     // A workflow passes a multi-line input; blank lines and # comments are skipped.
     private static IEnumerable<string> SplitGlobs(string value) => value
@@ -59,7 +79,12 @@ public sealed record ReviewOptions(
 /// Reviews a pull request and writes <c>result.json</c> (FR-7, FR-8, FR-17). A result is written for every reviewed
 /// state, failed included, so the comment job can report it; only an unreadable pull request ends without one.
 /// </summary>
-public sealed class ReviewCommand(GitHubClient gitHub, Func<ReviewOptions, IChatClient> createChatClient, ActionsLog log)
+/// <param name="createJiraSource">Creates the Jira source from the options, or null when the Jira source is off.</param>
+public sealed class ReviewCommand(
+    GitHubClient gitHub,
+    Func<ReviewOptions, IChatClient> createChatClient,
+    ActionsLog log,
+    Func<ReviewOptions, IRequirementSource?>? createJiraSource = null)
 {
     public const string ProviderConfigurationError =
         "model provider configuration error: check --model-provider, --model, --model-endpoint, and INTEGRICODE_MODEL_API_KEY";
@@ -110,8 +135,13 @@ public sealed class ReviewCommand(GitHubClient gitHub, Func<ReviewOptions, IChat
         using (chatClient)
         {
             var guard = new PathGuard(options.Workspace, options.Exclude);
-            var sources = new RequirementSources([new ReqEntrySource(guard, options.RequirementsFile)]);
-            var workflow = new ReviewWorkflow(chatClient, guard, new ContextBudget(options.MaxToolCalls, options.MaxContextChars), sources);
+            List<IRequirementSource> sources = [new ReqEntrySource(guard, options.RequirementsFile)];
+            if (createJiraSource?.Invoke(options) is { } jira)
+            {
+                sources.Add(jira);
+            }
+
+            var workflow = new ReviewWorkflow(chatClient, guard, new ContextBudget(options.MaxToolCalls, options.MaxContextChars), new RequirementSources(sources));
             return await workflow.RunAsync(new ReviewRequest(options.Repository, pullRequest, files), cancellationToken);
         }
     }
