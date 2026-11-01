@@ -5,15 +5,24 @@ using Integricode.GitHub;
 namespace Integricode.Commands;
 
 /// <summary>The <c>comment</c> command's options.</summary>
-public sealed record CommentOptions(string Repository, int PullRequest, string ResultPath)
+/// <param name="SkippedByPolicy">The policy that stopped the review (only <c>fork</c>); set, no result file is read.</param>
+public sealed record CommentOptions(string Repository, int PullRequest, string ResultPath, string? SkippedByPolicy = null)
 {
-    private static readonly IReadOnlySet<string> Allowed = new HashSet<string>(StringComparer.Ordinal) { "repo", "pr", "result" };
+    public const string ForkPolicy = "fork";
+
+    private static readonly IReadOnlySet<string> Allowed = new HashSet<string>(StringComparer.Ordinal) { "repo", "pr", "result", "skipped-by-policy" };
 
     /// <exception cref="UsageException">An option is missing or invalid.</exception>
     public static CommentOptions Parse(IReadOnlyList<string> args)
     {
         var commandLine = CommandLine.Parse(args, Allowed);
-        return new CommentOptions(commandLine.Repository(), commandLine.PullRequestNumber(), commandLine.Optional("result") ?? "result.json");
+        var policy = commandLine.Optional("skipped-by-policy");
+        if (policy is not (null or ForkPolicy))
+        {
+            throw new UsageException($"Option --skipped-by-policy must be {ForkPolicy}.");
+        }
+
+        return new CommentOptions(commandLine.Repository(), commandLine.PullRequestNumber(), commandLine.Optional("result") ?? "result.json", policy);
     }
 }
 
@@ -21,17 +30,25 @@ public sealed record CommentOptions(string Repository, int PullRequest, string R
 /// Publishes a review result on the pull request (FR-12 to FR-15, FR-17): one summary comment, updated in place, and
 /// one review with event <c>COMMENT</c> holding an inline comment per new finding on a diff line. Earlier Integricode
 /// findings the result no longer reports are minimized as outdated. Nothing is published but what the result carries,
-/// through <see cref="CommentTemplates"/>.
+/// through <see cref="CommentTemplates"/>. A pull request the workflow's gate stopped by policy gets only a summary
+/// that says so (FR-3).
 /// </summary>
 /// <param name="publisherLogin">The account the comment job's token posts as; only its comments are updated or minimized.</param>
 public sealed class CommentCommand(GitHubClient gitHub, ActionsLog log, string publisherLogin = CommentCommand.GitHubActionsLogin)
 {
     public const string GitHubActionsLogin = "github-actions[bot]";
+    public const string ForkReason = "pull request from a fork; Integricode reviews only pull requests whose branch is in this repository";
 
     /// <returns>0 when published, 1 when the result file is unreadable or does not belong to the pull request.</returns>
     public async Task<int> RunAsync(CommentOptions options, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(options);
+        if (options.SkippedByPolicy is not null)
+        {
+            await PublishSkippedByPolicyAsync(options, cancellationToken);
+            return 0;
+        }
+
         ReviewResult result;
         try
         {
@@ -74,6 +91,21 @@ public sealed class CommentCommand(GitHubClient gitHub, ActionsLog log, string p
 
         await PublishFindingsAsync(options, result, cancellationToken);
         return 0;
+    }
+
+    private async Task PublishSkippedByPolicyAsync(CommentOptions options, CancellationToken cancellationToken)
+    {
+        var pullRequest = await gitHub.GetPullRequestAsync(options.Repository, options.PullRequest, cancellationToken);
+        var result = new ReviewResult
+        {
+            Repository = options.Repository,
+            PullRequestNumber = options.PullRequest,
+            HeadSha = pullRequest.HeadSha,
+            Coverage = Coverage.SkippedByPolicy(ForkReason),
+        };
+
+        await UpsertSummaryAsync(options, await FindSummaryAsync(options, cancellationToken), CommentTemplates.Summary(result, []), cancellationToken);
+        log.Notice($"Skipped by policy ({options.SkippedByPolicy}): published the summary; no findings.");
     }
 
     private async Task PublishFindingsAsync(CommentOptions options, ReviewResult result, CancellationToken cancellationToken)

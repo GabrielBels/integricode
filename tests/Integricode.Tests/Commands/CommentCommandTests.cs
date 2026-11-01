@@ -324,6 +324,45 @@ public sealed class CommentCommandTests : IDisposable
         Assert.Empty(gitHub.Requests);
     }
 
+    [Fact]
+    public async Task A_fork_skipped_by_policy_gets_a_summary_that_names_the_policy_and_carries_no_finding()
+    {
+        var exitCode = await new CommentCommand(gitHub.Client(), new ActionsLog(log))
+            .RunAsync(CommentOptions.Parse(["--repo", FakeGitHub.Repository, "--pr", "7", "--skipped-by-policy", "fork"]), CancellationToken.None);
+
+        Assert.Equal(0, exitCode);
+        Assert.Empty(gitHub.Reviews);
+        Assert.Empty(gitHub.ReviewComments);
+        Assert.Contains("| State | Skipped by policy |", Summary.Body);
+        Assert.Contains($"| Head SHA | `{gitHub.HeadSha}` |", Summary.Body);
+        Assert.Contains("- pull request from a fork; Integricode reviews only pull requests whose branch is in this repository", Summary.Body);
+        Assert.DoesNotContain("| Findings |", Summary.Body);
+        var record = CommentTemplates.ReadRecord(Summary.Body)!;
+        Assert.Equal(CoverageState.SkippedByPolicy, record.State);
+        Assert.Equal(gitHub.HeadSha, record.HeadSha);
+        Assert.Empty(record.Findings);
+    }
+
+    [Fact]
+    public async Task Skipping_by_policy_again_updates_the_same_summary()
+    {
+        var options = CommentOptions.Parse(["--repo", FakeGitHub.Repository, "--pr", "7", "--skipped-by-policy", "fork"]);
+        await new CommentCommand(gitHub.Client(), new ActionsLog(log)).RunAsync(options, CancellationToken.None);
+
+        await new CommentCommand(gitHub.Client(), new ActionsLog(log)).RunAsync(options, CancellationToken.None);
+
+        Assert.Contains("| State | Skipped by policy |", Summary.Body);
+    }
+
+    [Theory]
+    [InlineData("--repo", "octo/shop", "--pr", "7", "--skipped-by-policy", "draft")]
+    [InlineData("--repo", "octo/shop", "--pr", "7", "--skipped-by-policy")]
+    [InlineData("--repo", "octo/shop", "--pr", "7", "--unknown", "x")]
+    public void Invalid_options_are_usage_errors(params string[] args)
+    {
+        Assert.Throws<UsageException>(() => CommentOptions.Parse(args));
+    }
+
     public void Dispose()
     {
         gitHub.Dispose();
