@@ -1,0 +1,2 @@
+# Bash runs these scripts on Linux runners and in WSL, where CRLF line endings break them.
+*.sh text eol=lf

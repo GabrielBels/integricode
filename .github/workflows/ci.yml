@@ -22,3 +22,7 @@ jobs:
         run: dotnet build Integricode.slnx
       - name: Test
         run: dotnet test Integricode.slnx --no-build
+      - name: Test the workflow steps
+        run: |
+          dotnet pack src/Integricode -c Debug --no-build -o "$RUNNER_TEMP/feed"
+          INTEGRICODE_FEED="$RUNNER_TEMP/feed" bash tests/workflows/workflow-steps.test.sh

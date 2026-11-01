@@ -16,6 +16,7 @@ Integricode is a GitHub Action that reviews a pull request when it becomes ready
 - `dotnet test Integricode.slnx` - runs every test; no test reaches a network or a model provider.
 - `dotnet test Integricode.slnx --filter "FullyQualifiedName~Integricode.Tests.Validation.FindingValidatorTests"` - runs one test class; use a folder namespace (`Integricode.Tests.Commands`) for a whole area.
 - `dotnet pack src/Integricode -o artifacts` - packs the tool as `artifacts/Integricode.<version>.nupkg`.
+- `bash tests/workflows/workflow-steps.test.sh` - tests the review gate, the tool install, and the release tag move against synthetic input; needs bash, jq, git, and dotnet (Linux or WSL); `INTEGRICODE_FEED` names a folder with a packed tool, otherwise it packs one.
 - `python <dev-flow>/skills/_shared/scripts/check_layout.py .` - validates the docs layout.
 
 ## Repository Map
@@ -23,7 +24,8 @@ Integricode is a GitHub Action that reviews a pull request when it becomes ready
 - `docs/` - product, requirements, and design docs in the dev-flow/v1 layout; start from the Docs Map.
 - `src/Integricode/` - the tool: `Domain/` (review result, findings, coverage, snapshot, fingerprint), `GitHub/` (REST and GraphQL client, diff map), `Requirements/` (identification, REQ entry source), `Agent/` (chat client factory, repository tools, path guard, budget, review workflow and its embedded instructions), `Validation/` (provenance check), `Commands/` (`review`, `comment`, templates, argument parsing, Actions log), `App.cs` (command dispatch, environment variables, exit codes 0, 1, and 2), `Program.cs` (wires `App` to the console and the network).
 - `tests/Integricode.Tests/` - mirrors the tool's folders, plus `Fakes/` (fake GitHub, fake model, temporary checkout), `EndToEnd/`, and `Fixtures/` (a synthetic repository, copied to a temporary folder by the tests).
-- `.github/workflows/ci.yml` - builds and tests on pull requests and on pushes to `main`, with `contents: read` only.
+- `tests/workflows/` - shell tests of the workflows' scripts, run by `ci.yml`.
+- `.github/workflows/ci.yml` - builds and tests (the tool and the workflow steps) on pull requests and on pushes to `main`, with `contents: read` only.
 - `.github/workflows/review.yml` - the reusable workflow adopters call: a gate step, then the `review` job (read permissions, model and Jira secrets) and the `comment` job (`pull-requests: write` only); adoption is in `docs/guides/adoption.md`.
 - `.github/workflows/release.yml` - on a `vX.Y.Z` tag, builds, tests, packs, pushes the tool to GitHub Packages, and moves the `vX` tag.
 
