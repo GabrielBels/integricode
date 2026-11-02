@@ -189,13 +189,6 @@ suite_install() {
   else
     fail "install: a package outside the configured feed was resolved, or the failure was not 'not found'" "$dir/log"
   fi
-
-  dir=$(install_case "no token" "" "$feed" Integricode '1.*')
-  if [ "$(cat "$dir/exit")" != 0 ] && grep -qF '::error::The packages-token secret is not set.' "$dir/log"; then
-    pass "install: a missing packages-token stops with an error"
-  else
-    fail "install: a missing packages-token did not stop the install" "$dir/log"
-  fi
 }
 
 suite_release_tag() {

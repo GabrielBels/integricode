@@ -33,7 +33,7 @@ No database. The review result (`result.json`, `schemaVersion` 1) passes from th
 
 ## Deployment
 
-The tool is published as a private package on GitHub Packages by `release.yml` when the owner pushes a `vX.Y.Z` tag. Adopting repositories call `review.yml@v1`, which installs version `1.*` with a `read:packages` token. All secrets are GitHub secrets.
+The tool is published as a private package on GitHub Packages by `release.yml` when the owner pushes a `vX.Y.Z` tag. Adopting repositories call `review.yml@v1`, which installs version `1.*` with the caller's `GITHUB_TOKEN` (`packages: read`) once the package's Actions access gives the caller the Read role ([ADR-005](decisions/ADR-005-install-with-caller-github-token.md)). All secrets are GitHub secrets.
 
 ## Cross-Cutting Concerns
 

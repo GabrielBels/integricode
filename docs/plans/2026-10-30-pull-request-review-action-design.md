@@ -36,8 +36,8 @@ flowchart LR
   C --> P[Pull request: summary + inline findings]
 ```
 
-- **Distribution.** One .NET tool (`PackAsTool`, command `integricode`), packed from `src/Integricode/` and published as a private package on GitHub Packages. The reusable workflow `.github/workflows/review.yml` in this private repository installs it with `--version 1.*`, matching the workflow's `v1` tag. Adopters store a personal access token with `read:packages` as a secret, and the repository's Actions access setting allows repositories owned by `GabrielBels`.
-- **Two jobs, two credentials.** The `review` job runs with `contents: read` and `pull-requests: read` and receives the model key and the Jira secrets. It never holds a write permission. The `comment` job runs with `pull-requests: write` and receives no tracker or model secret. It posts only what the result file carries, through fixed templates. ADR-001 records this decision.
+- **Distribution.** One .NET tool (`PackAsTool`, command `integricode`), packed from `src/Integricode/` and published as a private package on GitHub Packages. The reusable workflow `.github/workflows/review.yml` in this private repository installs it with `--version 1.*`, matching the workflow's `v1` tag. Both jobs install it with the caller's `GITHUB_TOKEN` and `packages: read`, the package's Actions access gives each adopting repository the Read role (ADR-005), and the repository's Actions access setting allows repositories owned by `GabrielBels`.
+- **Two jobs, two credentials.** The `review` job runs with `contents: read`, `pull-requests: read`, and `packages: read` and receives the model key and the Jira secrets. It never holds a write permission. The `comment` job runs with `pull-requests: write` and `packages: read` and receives no secret. It posts only what the result file carries, through fixed templates. ADR-001 records this decision.
 - **Commands.** `integricode review` reads the event, the pull request, the requirement, and the code, runs the agent workflow, validates the findings, and writes `result.json`. `integricode comment` reads `result.json`, checks that the head SHA is still current, and publishes. The `review` job's gate (event filter, fork check, commenter permission) is a shell step using `gh api`, because a fork's run has no secret to install the tool (REQ-003).
 - **Source layout.** `src/Integricode/` holds one project with folders `Domain/` (result, findings, coverage, snapshot), `GitHub/` (REST client), `Requirements/` (identification, REQ source; `Jira/` in REQ-002), `Agent/` (chat client factory, repository tools, MAF workflow), `Validation/`, and `Commands/`. `tests/Integricode.Tests/` mirrors those folders.
 
@@ -61,7 +61,7 @@ Per repository, through the reusable workflow's inputs and secrets (FR-16):
 | `requirements-file` (default `docs/requirements.md`) | REQ source |
 | `jira-base-url`, `jira-acceptance-criteria-field` | Jira source (REQ-002) |
 | `exclude` (multi-line globs), `max-context-chars` (400000), `max-tool-calls` (40) | Context boundary |
-| secrets `model-api-key`, `packages-token`, `jira-email`, `jira-api-token` | Stored as GitHub secrets; Jira ones only in the `review` job |
+| secrets `model-api-key`, `jira-email`, `jira-api-token` | Stored as GitHub secrets; Jira ones only in the `review` job |
 
 ## Error Handling
 
@@ -90,9 +90,10 @@ Per repository, through the reusable workflow's inputs and secrets (FR-16):
 - 2026-10-30: How is the package released? → The owner pushes a `v*` tag; a release workflow publishes and moves the major tag; goals never publish (Approved; the target is GitHub Packages, below)
 - 2026-10-30: Is the GitHub repository public? → Private for now (Approved)
 - 2026-10-30: What is sent to the model? → The fixed input (diff, changed files, requirement) plus read-only tools over the whole repository at the head SHA (read file, search, list directory), no network, write, or execution, excluded paths refused, at most 40 calls and 400,000 characters, everything read hashed into the snapshot (Approved)
-- 2026-10-30: Where does the package live? → GitHub Packages, private; each adopting repository stores a personal access token with `read:packages` as a secret (Approved; supersedes NuGet.org)
+- 2026-10-30: Where does the package live? → GitHub Packages, private; each adopting repository stores a personal access token with `read:packages` as a secret (Approved; supersedes NuGet.org; the token part is superseded below)
 - 2026-10-30: Configuration through workflow inputs instead of a YAML file, so no YAML dependency is added (Approved)
 - 2026-10-30: Does the owner approve the design, the ADRs, and the three breakdowns, including `ci.yml`, SHA-pinned GitHub-owned actions, configuration through inputs, the published fields, and moving the major tag on release? → "Aprovar tudo" (Approved)
+- 2026-11-02: How does the workflow authenticate to the package? → The caller's `GITHUB_TOKEN` with `packages: read` in both jobs, after the package's Actions access gives the repository the Read role; no packages secret (Approved; ADR-005 supersedes ADR-003)
 
 ## Acceptance Criteria
 

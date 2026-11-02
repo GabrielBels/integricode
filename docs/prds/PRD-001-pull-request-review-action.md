@@ -133,7 +133,7 @@ The risks of the product PRD apply: see [prd.md](../prd.md). Specific to this de
 
 - Design: [2026-10-30-pull-request-review-action-design.md](../plans/2026-10-30-pull-request-review-action-design.md)
 - Requirements: REQ-001 Review Core with REQ Entries (FR-4, FR-6 to FR-15, FR-17); REQ-002 Jira Cloud Requirement Source (FR-5); REQ-003 GitHub Action and Package (FR-1, FR-2, FR-3, FR-16), in [requirements.md](../requirements.md)
-- Decisions: [ADR-001](../decisions/ADR-001-separate-review-comment-credentials.md), [ADR-002](../decisions/ADR-002-read-only-repository-tools.md), [ADR-003](../decisions/ADR-003-private-tool-on-github-packages.md), [ADR-004](../decisions/ADR-004-agent-framework-provider-agnostic.md)
+- Decisions: [ADR-001](../decisions/ADR-001-separate-review-comment-credentials.md), [ADR-002](../decisions/ADR-002-read-only-repository-tools.md), [ADR-003](../decisions/ADR-003-private-tool-on-github-packages.md), [ADR-004](../decisions/ADR-004-agent-framework-provider-agnostic.md), [ADR-005](../decisions/ADR-005-install-with-caller-github-token.md)
 
 ## Decision Log
 

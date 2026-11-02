@@ -46,9 +46,6 @@ on:
       model-api-key:
         description: API key of the model provider.
         required: false
-      packages-token:
-        description: Personal access token with read:packages that installs the Integricode tool.
-        required: false
       jira-email:
         description: E-mail of the read-only Jira account.
         required: false
@@ -63,6 +60,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+      packages: read
     outputs:
       decision: ${{ steps.gate.outputs.decision }}
       pr: ${{ steps.gate.outputs.pr }}
@@ -132,13 +130,10 @@ jobs:
         if: steps.gate.outputs.decision == 'review'
         working-directory: ${{ runner.temp }}
         env:
-          PACKAGES_TOKEN: ${{ secrets.packages-token }}
+          # The caller's token reads the package once the package's Actions access lists the caller (ADR-005).
+          PACKAGES_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if [ -z "$PACKAGES_TOKEN" ]; then
-            echo "::error::The packages-token secret is not set."
-            exit 1
-          fi
           # Only the GitHub Packages source: a same-named package on nuget.org must never satisfy 1.*.
           config_dir="$RUNNER_TEMP/integricode-nuget"
           mkdir -p "$config_dir"
@@ -211,6 +206,7 @@ jobs:
     timeout-minutes: 15
     permissions:
       pull-requests: write
+      packages: read
     steps:
       - name: Set up .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
@@ -220,13 +216,10 @@ jobs:
       - name: Install Integricode
         working-directory: ${{ runner.temp }}
         env:
-          PACKAGES_TOKEN: ${{ secrets.packages-token }}
+          # The caller's token reads the package once the package's Actions access lists the caller (ADR-005).
+          PACKAGES_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if [ -z "$PACKAGES_TOKEN" ]; then
-            echo "::error::The packages-token secret is not set."
-            exit 1
-          fi
           # Only the GitHub Packages source: a same-named package on nuget.org must never satisfy 1.*.
           config_dir="$RUNNER_TEMP/integricode-nuget"
           mkdir -p "$config_dir"

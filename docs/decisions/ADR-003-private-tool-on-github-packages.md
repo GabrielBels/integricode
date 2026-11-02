@@ -1,6 +1,6 @@
 # ADR-003: Private .NET Tool on GitHub Packages
 
-> Status: Accepted
+> Status: Superseded by ADR-005
 > Date: 2026-10-30
 
 ## Context
