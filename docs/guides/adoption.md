@@ -70,7 +70,7 @@ The caller's `permissions` are the most the reusable workflow's jobs can get; ea
 | `model-endpoint` | empty | The endpoint URL. Required for `azure-openai`, which uses its v1 OpenAI-compatible endpoint. |
 | `requirements-file` | `docs/requirements.md` | The file that holds the REQ entries. |
 | `jira-base-url` | empty | The Jira Cloud site as an https URL, such as `https://example.atlassian.net`; any other value stops the review with a usage error. Empty turns the Jira source off. |
-| `jira-acceptance-criteria-field` | empty | The Jira field ID that holds the acceptance criteria, such as `customfield_10042`. Empty reads them from the description. An issue whose field (or, without one, whose description) is empty is reviewed with incomplete coverage. |
+| `jira-acceptance-criteria-field` | empty | The Jira field ID that holds the acceptance criteria, such as `customfield_10042`; a value with anything but letters, digits, and underscores stops the review with a usage error. Empty reads them from the description. An issue whose field (or, without one, whose description) is empty is reviewed with incomplete coverage. |
 | `exclude` | empty | Extra paths the review never reads, one glob per line. `.env*`, key and certificate files, lockfiles, binaries, and `*.min.*` are always excluded. |
 | `max-context-chars` | `400000` | Characters the review may read before its coverage becomes incomplete. |
 | `max-tool-calls` | `40` | Repository tool calls the review may make before its coverage becomes incomplete. |
