@@ -68,7 +68,7 @@
 - [x] Every action used is GitHub-owned and pinned by commit SHA.
 - [x] `docs/guides/adoption.md` lets a repository adopt it without the owner's help.
 
-**Context/Notes**: Requires REQ-001. ADRs [ADR-001](decisions/ADR-001-separate-review-comment-credentials.md) [ADR-003](decisions/ADR-003-private-tool-on-github-packages.md), superseded by [ADR-005](decisions/ADR-005-install-with-caller-github-token.md). Ask First settled: `review.yml` and `release.yml` triggers, permissions, and secrets; private distribution; installing with the caller's `GITHUB_TOKEN` instead of a packages token (2026-11-02). The repository's Actions access setting, the package's Actions access, and the first tag stay with the owner. Breakdown: [REQ-003](breakdowns/REQ-003-breakdown.md).
+**Context/Notes**: Requires REQ-001. ADRs [ADR-001](decisions/ADR-001-separate-review-comment-credentials.md) and [ADR-003](decisions/ADR-003-private-tool-on-github-packages.md), superseded by [ADR-005](decisions/ADR-005-install-with-caller-github-token.md). Ask First settled: `review.yml` and `release.yml` triggers, permissions, and secrets; private distribution; installing with the caller's `GITHUB_TOKEN` instead of a packages token (2026-11-02). The repository's Actions access setting, the package's Actions access, and the first tag stay with the owner. Breakdown: [REQ-003](breakdowns/REQ-003-breakdown.md).
 
 **Goal brief**: [REQ-003](goals/REQ-003.md)
 
