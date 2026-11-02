@@ -103,6 +103,19 @@ public sealed class JiraReviewCoverageTests : IDisposable
         Assert.Empty(jira.Requests);
     }
 
+    [Fact]
+    public async Task An_issue_without_acceptance_criteria_is_reviewed_with_incomplete_coverage()
+    {
+        jira.CustomFields.Remove("customfield_10042");
+        jira.Description = Adf.Doc(Adf.Paragraph("The total applies every discount in the cart."));
+
+        var result = await ReviewAsync();
+
+        Assert.Equal(CoverageState.Incomplete, result.Coverage.State);
+        Assert.Equal(["Jira issue SHOP-12 has no acceptance criteria in customfield_10042"], result.Coverage.Reasons);
+        Assert.Equal([FindingKind.RequirementMismatch, FindingKind.Bug], result.Findings.Select(f => f.Kind));
+    }
+
     private void AssertIncompleteWithBugs(ReviewResult result, string reason)
     {
         Assert.Equal(CoverageState.Incomplete, result.Coverage.State);
