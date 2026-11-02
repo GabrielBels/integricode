@@ -26,7 +26,7 @@ Integricode is a GitHub Action that reviews a pull request when it becomes ready
 - `tests/Integricode.Tests/` - mirrors the tool's folders, plus `Fakes/` (fake GitHub, fake Jira, fake model, temporary checkout), `EndToEnd/`, and `Fixtures/` (a synthetic repository, copied to a temporary folder by the tests).
 - `tests/workflows/` - shell tests of the workflows' scripts, run by `ci.yml`.
 - `.github/workflows/ci.yml` - builds and tests (the tool and the workflow steps) on pull requests and on pushes to `main`, with `contents: read` only.
-- `.github/workflows/review.yml` - the reusable workflow adopters call: a gate step, then the `review` job (read permissions, model and Jira secrets) and the `comment` job (`pull-requests: write` only); adoption is in `docs/guides/adoption.md`.
+- `.github/workflows/review.yml` - the reusable workflow adopters call: a gate step, then the `review` job (read permissions, model and Jira secrets) and the `comment` job (`pull-requests: write` and `packages: read` only); both install the tool with the caller's `GITHUB_TOKEN`; adoption is in `docs/guides/adoption.md`.
 - `.github/workflows/release.yml` - on a `vX.Y.Z` tag, builds, tests, packs, pushes the tool to GitHub Packages, and moves the `vX` tag.
 
 ## Conventions

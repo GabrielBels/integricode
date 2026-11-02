@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Regression tests for the shell steps of the workflows: the review gate (FR-1 to FR-3), the tool install's source
-# isolation, and the release's major-tag move. Each suite extracts the step's script from the workflow file, runs it
-# against synthetic input, and stubs `gh` and `git`; nothing reaches GitHub. Needs bash, jq, git, and dotnet.
+# Regression tests for the shell steps of the workflows: the review gate (FR-1 to FR-3), the tool install's credential
+# and source isolation, and the release's major-tag move. Each suite extracts the step's script from the workflow file,
+# runs it against synthetic input, and stubs `gh` and `git`; nothing reaches GitHub. Needs bash, jq, git, and dotnet.
 #
 # Usage: bash tests/workflows/workflow-steps.test.sh [gate] [install] [release-tag]   (no argument runs all three)
 # INTEGRICODE_FEED: a folder holding the packed Integricode .nupkg; without it, the install suite packs one.
@@ -150,6 +150,14 @@ suite_install() {
     fail "install: the review and comment jobs must install the tool with the same script"
     return
   fi
+  local workflow
+  workflow=$(tr -d '\r' < "$root/.github/workflows/review.yml")
+  if [ "$(grep -cF 'PACKAGES_TOKEN: ${{ github.token }}' <<< "$workflow")" != 2 ] \
+    || [ "$(grep -cE '^      packages: read$' <<< "$workflow")" != 2 ]; then
+    fail "install: both jobs must install with the caller's GITHUB_TOKEN and ask for packages: read"
+    return
+  fi
+  pass "install: both jobs install with the caller's GITHUB_TOKEN and ask for packages: read"
   if ! grep -qF 'https://nuget.pkg.github.com/GabrielBels/index.json' "$first" || ! grep -qF "Integricode --version '1.*'" "$first"; then
     fail "install: the source URL or the package and version range changed; update this suite"
     return
@@ -188,13 +196,6 @@ suite_install() {
     pass "install: nuget.org is never a source"
   else
     fail "install: a package outside the configured feed was resolved, or the failure was not 'not found'" "$dir/log"
-  fi
-
-  dir=$(install_case "no token" "" "$feed" Integricode '1.*')
-  if [ "$(cat "$dir/exit")" != 0 ] && grep -qF '::error::The packages-token secret is not set.' "$dir/log"; then
-    pass "install: a missing packages-token stops with an error"
-  else
-    fail "install: a missing packages-token did not stop the install" "$dir/log"
   fi
 }
 

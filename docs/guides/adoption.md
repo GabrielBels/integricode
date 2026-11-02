@@ -8,11 +8,11 @@ A repository adopts it by adding one caller workflow and a few secrets. This gui
 
 - **Access to the workflow.** `GabrielBels/integricode` is private, so only repositories its Actions access setting allows can call its workflow. The owner sets this once: in `GabrielBels/integricode`, open **Settings > Actions > General > Access** and choose **Accessible from repositories owned by the user 'GabrielBels'**.
 - **A release.** The caller uses the `v1` tag, which the release workflow creates when the owner pushes the first `v1.Y.Z` tag.
-- **A packages token.** The tool is a private package on GitHub Packages, which needs a token even to install. As `GabrielBels`, create a personal access token (classic) with only the `read:packages` scope. GitHub Packages does not accept fine-grained tokens for NuGet.
+- **Access to the package.** The tool is a private package on GitHub Packages, which the workflow installs with the adopting repository's own `GITHUB_TOKEN` ([ADR-005](../decisions/ADR-005-install-with-caller-github-token.md)). The owner grants it once per repository, after the first release: on the `Integricode` package page under `GabrielBels`'s **Packages**, open **Package settings > Manage Actions access > Add repository**, pick the repository, and give it the **Read** role.
 - **A model key.** An API key for OpenAI, Azure OpenAI, or Anthropic.
 - **Jira (optional).** To review against Jira Cloud issues, the e-mail and API token of a dedicated read-only Jira account. Let it browse only the projects whose issues this repository's pull requests implement: anyone who can trigger a review can link any issue the account can see, and the review can quote that issue on the pull request.
 
-Repositories outside the `GabrielBels` account, such as an organization's, cannot call the workflow while the repository is private ([ADR-003](../decisions/ADR-003-private-tool-on-github-packages.md)).
+Repositories outside the `GabrielBels` account, such as an organization's, cannot call the workflow while the repository is private ([ADR-005](../decisions/ADR-005-install-with-caller-github-token.md)).
 
 ## 1. Add the Secrets
 
@@ -21,11 +21,10 @@ In the adopting repository, open **Settings > Secrets and variables > Actions** 
 | Repository secret | Passed as | Required |
 |---|---|---|
 | `INTEGRICODE_MODEL_API_KEY` | `model-api-key` | Yes |
-| `INTEGRICODE_PACKAGES_TOKEN` | `packages-token` | Yes |
 | `JIRA_EMAIL` | `jira-email` | Only for Jira |
 | `JIRA_API_TOKEN` | `jira-api-token` | Only for Jira |
 
-The model and Jira secrets reach only the `review` job, which cannot write to the repository. The `comment` job, the only one that writes, receives just the packages token ([ADR-001](../decisions/ADR-001-separate-review-comment-credentials.md)).
+The model and Jira secrets reach only the `review` job, which cannot write to the repository. The `comment` job, the only one that writes, receives no secret ([ADR-001](../decisions/ADR-001-separate-review-comment-credentials.md)).
 
 ## 2. Add the Caller Workflow
 
@@ -43,6 +42,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  packages: read
 
 jobs:
   integricode:
@@ -54,7 +54,6 @@ jobs:
       model: <model name>
     secrets:
       model-api-key: ${{ secrets.INTEGRICODE_MODEL_API_KEY }}
-      packages-token: ${{ secrets.INTEGRICODE_PACKAGES_TOKEN }}
       jira-email: ${{ secrets.JIRA_EMAIL }}
       jira-api-token: ${{ secrets.JIRA_API_TOKEN }}
 ```
@@ -112,8 +111,7 @@ A pull request from a fork is never reviewed: its code is never checked out, and
 | Symptom | Cause |
 |---|---|
 | The caller fails with a workflow that is not found or not accessible | The Actions access setting of `GabrielBels/integricode` does not allow the repository, or the `v1` tag does not exist. |
-| `Install Integricode` fails with `The packages-token secret is not set.` | The `INTEGRICODE_PACKAGES_TOKEN` secret is missing or not passed. |
-| `Install Integricode` fails with HTTP 401 or 403 | The token lacks `read:packages` or was not created by `GabrielBels`. |
+| `Install Integricode` fails with HTTP 401 or 403 | The package's Actions access does not give the repository the Read role, or the caller workflow does not grant `packages: read`. |
 | The summary says failed with a model provider configuration error | The provider, model, endpoint, or `INTEGRICODE_MODEL_API_KEY` is wrong or missing. |
 | A comment `@integricode review` starts no review | The comment does not contain the exact phrase, its author lacks write access, or it was edited instead of posted. |
 | The `review` job fails saying the pull request moved during the review | A commit arrived while the review ran. Comment `@integricode review` again. |
