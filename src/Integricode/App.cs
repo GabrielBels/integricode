@@ -1,5 +1,7 @@
 using Integricode.Commands;
 using Integricode.GitHub;
+using Integricode.Requirements;
+using Integricode.Requirements.Jira;
 using Microsoft.Extensions.AI;
 
 namespace Integricode;
@@ -8,7 +10,7 @@ namespace Integricode;
 /// The command line: dispatches <c>review</c> and <c>comment</c>, reads the environment, and maps the outcome to an
 /// exit code: 0 done, 1 failed, 2 usage error. <c>Program</c> only wires it to the console and the network.
 /// </summary>
-/// <param name="httpHandler">The handler every GitHub call goes through.</param>
+/// <param name="httpHandler">The handler every GitHub and Jira call goes through.</param>
 /// <param name="createChatClient">Creates the model client from the provider, model, endpoint, and API key.</param>
 public sealed class App(HttpMessageHandler httpHandler, Func<string, string, string?, string, IChatClient> createChatClient)
 {
@@ -29,7 +31,7 @@ public sealed class App(HttpMessageHandler httpHandler, Func<string, string, str
         {
             return args switch
             {
-                ["review", .. var options] => await new ReviewCommand(CreateGitHubClient(environment), CreateChatClient(environment), log)
+                ["review", .. var options] => await new ReviewCommand(CreateGitHubClient(environment), CreateChatClient(environment), log, CreateJiraSource(environment))
                     .RunAsync(ReviewOptions.Parse(options), cancellationToken),
                 ["comment", .. var options] => await new CommentCommand(CreateGitHubClient(environment), log)
                     .RunAsync(CommentOptions.Parse(options), cancellationToken),
@@ -72,6 +74,13 @@ public sealed class App(HttpMessageHandler httpHandler, Func<string, string, str
         options.ModelEndpoint,
         environment(ModelApiKeyVariable) ?? string.Empty);
 
+    private Func<ReviewOptions, IRequirementSource?> CreateJiraSource(Func<string, string?> environment) => options => JiraRequirementSource.Create(
+        new HttpClient(httpHandler, disposeHandler: false) { Timeout = JiraClient.DefaultTimeout },
+        options.JiraBaseUrl,
+        options.JiraAcceptanceCriteriaField,
+        environment(JiraRequirementSource.EmailVariable),
+        environment(JiraRequirementSource.ApiTokenVariable));
+
     private static async Task<int> UsageAsync(TextWriter error)
     {
         await error.WriteLineAsync($"""
@@ -80,8 +89,10 @@ public sealed class App(HttpMessageHandler httpHandler, Func<string, string, str
                                  [--model-endpoint URL] [--workspace DIR] [--out result.json]
                                  [--requirements-file docs/requirements.md] [--exclude GLOB]...
                                  [--max-context-chars 400000] [--max-tool-calls 40]
+                                 [--jira-base-url https://example.atlassian.net] [--jira-acceptance-criteria-field FIELD]
               integricode comment --repo owner/name --pr N [--result result.json | --skipped-by-policy fork]
-            Environment: GITHUB_TOKEN; {ModelApiKeyVariable} for review; GITHUB_API_URL and GITHUB_GRAPHQL_URL when set.
+            Environment: GITHUB_TOKEN; {ModelApiKeyVariable} for review; {JiraRequirementSource.EmailVariable} and {JiraRequirementSource.ApiTokenVariable} for the Jira source;
+            GITHUB_API_URL and GITHUB_GRAPHQL_URL when set.
             """);
         return 2;
     }

@@ -94,6 +94,30 @@ public sealed class AppTests : IDisposable
     }
 
     [Fact]
+    public async Task Review_reads_the_jira_credentials_from_the_environment()
+    {
+        using var gitHub = new FakeGitHub { Title = "SHOP-12: cart totals" };
+        using var jira = new FakeJira();
+        gitHub.Files.Add(new PullRequestFile("src/A.cs", "added", "@@ -0,0 +1 @@\n+class A {}"));
+        workspace.Write("src/A.cs", "class A {}\n");
+        environment["JIRA_EMAIL"] = FakeJira.Email;
+        environment["JIRA_API_TOKEN"] = FakeJira.ApiToken;
+        var resultPath = workspace.FullPath("out/result.json");
+
+        var exitCode = await RunAsync(
+            new HostRouter(new Dictionary<string, HttpMessageHandler> { ["api.github.test"] = gitHub, ["shop.atlassian.test"] = jira }),
+            (_, _, _, _) => new ScriptedChatClient().ThenText("{\"findings\": []}"),
+            "review", "--repo", FakeGitHub.Repository, "--pr", "7", "--workspace", workspace.Root, "--out", resultPath, "--model-provider", "openai", "--model", "m",
+            "--jira-base-url", FakeJira.BaseUrl);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal(CoverageState.Complete, (await ReviewResult.ReadAsync(resultPath, CancellationToken.None)).Coverage.State);
+        Assert.Equal(2, jira.Requests.Count);
+        Assert.All(jira.Requests, r => Assert.Equal(FakeJira.Authorization, r.Authorization));
+        Assert.DoesNotContain(FakeJira.ApiToken, output.ToString() + error.ToString());
+    }
+
+    [Fact]
     public async Task A_missing_model_key_writes_a_failed_result()
     {
         using var gitHub = new FakeGitHub();
@@ -142,5 +166,15 @@ public sealed class AppTests : IDisposable
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
             throw exception;
+    }
+
+    /// <summary>Sends each request to the fake that serves its host, as one real handler serves GitHub and Jira.</summary>
+    private sealed class HostRouter(IReadOnlyDictionary<string, HttpMessageHandler> handlers) : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            using var invoker = new HttpMessageInvoker(handlers[request.RequestUri!.Host], disposeHandler: false);
+            return await invoker.SendAsync(request, cancellationToken);
+        }
     }
 }

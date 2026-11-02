@@ -10,7 +10,7 @@ A repository adopts it by adding one caller workflow and a few secrets. This gui
 - **A release.** The caller uses the `v1` tag, which the release workflow creates when the owner pushes the first `v1.Y.Z` tag.
 - **A packages token.** The tool is a private package on GitHub Packages, which needs a token even to install. As `GabrielBels`, create a personal access token (classic) with only the `read:packages` scope. GitHub Packages does not accept fine-grained tokens for NuGet.
 - **A model key.** An API key for OpenAI, Azure OpenAI, or Anthropic.
-- **Jira (optional).** To review against Jira Cloud issues, the e-mail and API token of a dedicated read-only Jira account.
+- **Jira (optional).** To review against Jira Cloud issues, the e-mail and API token of a dedicated read-only Jira account. Let it browse only the projects whose issues this repository's pull requests implement: anyone who can trigger a review can link any issue the account can see, and the review can quote that issue on the pull request.
 
 Repositories outside the `GabrielBels` account, such as an organization's, cannot call the workflow while the repository is private ([ADR-003](../decisions/ADR-003-private-tool-on-github-packages.md)).
 
@@ -69,8 +69,8 @@ The caller's `permissions` are the most the reusable workflow's jobs can get; ea
 | `model` | required | The model name, or the deployment name on Azure OpenAI. |
 | `model-endpoint` | empty | The endpoint URL. Required for `azure-openai`, which uses its v1 OpenAI-compatible endpoint. |
 | `requirements-file` | `docs/requirements.md` | The file that holds the REQ entries. |
-| `jira-base-url` | empty | The Jira Cloud site, such as `https://example.atlassian.net`. Empty turns the Jira source off. |
-| `jira-acceptance-criteria-field` | empty | The Jira custom field that holds the acceptance criteria, such as `customfield_10042`. Empty reads them from the description. |
+| `jira-base-url` | empty | The Jira Cloud site as an https URL, such as `https://example.atlassian.net`; any other value stops the review with a usage error. Empty turns the Jira source off. |
+| `jira-acceptance-criteria-field` | empty | The Jira field ID that holds the acceptance criteria, such as `customfield_10042`; a value with anything but letters, digits, and underscores stops the review with a usage error. Empty reads them from the description. An issue whose field (or, without one, whose description) is empty is reviewed with incomplete coverage. |
 | `exclude` | empty | Extra paths the review never reads, one glob per line. `.env*`, key and certificate files, lockfiles, binaries, and `*.min.*` are always excluded. |
 | `max-context-chars` | `400000` | Characters the review may read before its coverage becomes incomplete. |
 | `max-tool-calls` | `40` | Repository tool calls the review may make before its coverage becomes incomplete. |
@@ -84,7 +84,12 @@ Integricode uses the first REQ ID (`REQ-001`) or Jira key (`SHOP-123`) it finds 
 - A REQ ID is read from the `## [REQ-NNN]` section of the requirements file at the pull request's head commit, acceptance criteria included.
 - A Jira key is read from the Jira site: summary, description, acceptance criteria, and comments.
 
-With no requirement linked, or one that cannot be read, Integricode still reports bugs and marks the coverage incomplete, naming what was missing.
+Integricode still reports bugs and marks the coverage incomplete, naming what was missing, in these cases:
+
+- No requirement is linked.
+- The requirement cannot be read, for example when Jira answers 401, 403, or 404, or times out.
+- A Jira issue has no acceptance criteria.
+- A Jira key is linked but only some of `jira-base-url`, `JIRA_EMAIL`, and `JIRA_API_TOKEN` are set, for example "Jira source not configured for SHOP-123: missing JIRA_EMAIL".
 
 ## 5. Run a Review
 

@@ -8,7 +8,7 @@ Integricode is a GitHub Action that reviews a pull request when it becomes ready
 - Microsoft Agent Framework (`Microsoft.Agents.AI`, `Microsoft.Agents.AI.Workflows` 1.26.0), `Microsoft.Extensions.AI.OpenAI` 10.11.0 (OpenAI and Azure OpenAI), `Anthropic` 13.3.0; versions are central in `Directory.Packages.props`.
 - Tests: xUnit 2.9.3, `xunit.runner.visualstudio` 3.1.5, `Microsoft.NET.Test.Sdk` 18.4.0.
 - GitHub REST and GraphQL APIs through `HttpClient` and `System.Text.Json`; no CLI-parsing, YAML, or logging package.
-- GitHub Actions (`ci.yml`, the reusable `review.yml`, `release.yml`), GitHub Packages (private .NET tool), Jira Cloud REST API v3 (REQ-002).
+- GitHub Actions (`ci.yml`, the reusable `review.yml`, `release.yml`), GitHub Packages (private .NET tool), Jira Cloud REST API v3 (GET only; `--jira-base-url`, `--jira-acceptance-criteria-field`, and the `JIRA_EMAIL` and `JIRA_API_TOKEN` environment variables).
 
 ## Commands
 
@@ -22,8 +22,8 @@ Integricode is a GitHub Action that reviews a pull request when it becomes ready
 ## Repository Map
 
 - `docs/` - product, requirements, and design docs in the dev-flow/v1 layout; start from the Docs Map.
-- `src/Integricode/` - the tool: `Domain/` (review result, findings, coverage, snapshot, fingerprint), `GitHub/` (REST and GraphQL client, diff map), `Requirements/` (identification, REQ entry source), `Agent/` (chat client factory, repository tools, path guard, budget, review workflow and its embedded instructions), `Validation/` (provenance check), `Commands/` (`review`, `comment`, templates, argument parsing, Actions log), `App.cs` (command dispatch, environment variables, exit codes 0, 1, and 2), `Program.cs` (wires `App` to the console and the network).
-- `tests/Integricode.Tests/` - mirrors the tool's folders, plus `Fakes/` (fake GitHub, fake model, temporary checkout), `EndToEnd/`, and `Fixtures/` (a synthetic repository, copied to a temporary folder by the tests).
+- `src/Integricode/` - the tool: `Domain/` (review result, findings, coverage, snapshot, fingerprint), `GitHub/` (REST and GraphQL client, diff map), `Requirements/` (identification, REQ entry source, `Jira/` client, ADF converter, and Jira source), `Agent/` (chat client factory, repository tools, path guard, budget, review workflow and its embedded instructions), `Validation/` (provenance check), `Commands/` (`review`, `comment`, templates, argument parsing, Actions log), `App.cs` (command dispatch, environment variables, exit codes 0, 1, and 2), `Program.cs` (wires `App` to the console and the network).
+- `tests/Integricode.Tests/` - mirrors the tool's folders, plus `Fakes/` (fake GitHub, fake Jira, fake model, temporary checkout), `EndToEnd/`, and `Fixtures/` (a synthetic repository, copied to a temporary folder by the tests).
 - `tests/workflows/` - shell tests of the workflows' scripts, run by `ci.yml`.
 - `.github/workflows/ci.yml` - builds and tests (the tool and the workflow steps) on pull requests and on pushes to `main`, with `contents: read` only.
 - `.github/workflows/review.yml` - the reusable workflow adopters call: a gate step, then the `review` job (read permissions, model and Jira secrets) and the `comment` job (`pull-requests: write` only); adoption is in `docs/guides/adoption.md`.
@@ -35,7 +35,7 @@ Integricode is a GitHub Action that reviews a pull request when it becomes ready
 - C#: file-scoped namespaces, nullable enabled, warnings as errors, records for data, guard clauses (`ArgumentNullException.ThrowIfNull`); exemplars `src/Integricode/Validation/FindingValidator.cs` and `src/Integricode/Commands/CommentCommand.cs`.
 - Logs go through `ActionsLog` and carry only identifiers, counts, states, and hashes; exception messages from libraries are never logged, only their type or HTTP status.
 - Everything published goes through `CommentTemplates`, which caps model or repository text and, outside code spans, HTML-escapes it, neutralizes `@` mentions, and escapes square brackets.
-- Tests mirror the source folder (`Integricode.Tests.<Folder>`), name methods as sentences with underscores, and fake every HTTP call (`FakeGitHub`, `FakeHttpHandler`) and model call (`ScriptedChatClient`); test data is synthetic.
+- Tests mirror the source folder (`Integricode.Tests.<Folder>`), name methods as sentences with underscores, and fake every HTTP call (`FakeGitHub`, `FakeJira`, `FakeHttpHandler`) and model call (`ScriptedChatClient`); test data is synthetic.
 
 ## Boundaries
 

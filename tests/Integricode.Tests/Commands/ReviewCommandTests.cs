@@ -4,6 +4,7 @@ using Integricode.Commands;
 using Integricode.Domain;
 using Integricode.GitHub;
 using Integricode.Requirements;
+using Integricode.Requirements.Jira;
 using Integricode.Tests.Fakes;
 using Microsoft.Extensions.AI;
 
@@ -25,6 +26,7 @@ public sealed class ReviewCommandTests : IDisposable
     private readonly TempRepository workspace = new();
     private readonly TempRepository output = new();
     private readonly FakeGitHub gitHub = new();
+    private readonly FakeJira jira = new();
     private readonly StringWriter log = new();
 
     public ReviewCommandTests()
@@ -47,7 +49,13 @@ public sealed class ReviewCommandTests : IDisposable
             "--repo", FakeGitHub.Repository, "--pr", "7", "--workspace", workspace.Root, "--out", ResultPath,
             "--model-provider", "openai", "--model", "gpt-test", .. extraArgs,
         ]);
-        var exitCode = await new ReviewCommand(gitHub.Client(), createChatClient, new ActionsLog(log)).RunAsync(options, CancellationToken.None);
+        // The Jira inputs from the environment are absent, as in a repository that does not use Jira.
+        var exitCode = await new ReviewCommand(
+                gitHub.Client(),
+                createChatClient,
+                new ActionsLog(log),
+                o => JiraRequirementSource.Create(jira.HttpClient(), o.JiraBaseUrl, o.JiraAcceptanceCriteriaField, email: null, apiToken: null))
+            .RunAsync(options, CancellationToken.None);
         return (exitCode, File.Exists(ResultPath) ? await ReviewResult.ReadAsync(ResultPath, CancellationToken.None) : null);
     }
 
@@ -107,6 +115,7 @@ public sealed class ReviewCommandTests : IDisposable
         Assert.Equal(["Jira source not configured for SHOP-9"], result.Coverage.Reasons);
         Assert.Equal(new RequirementLink(RequirementKind.JiraIssue, "SHOP-9", RequirementLinkSource.Title), result.Requirement);
         Assert.Equal(FindingKind.Bug, Assert.Single(result.Findings).Kind);
+        Assert.Empty(jira.Requests);
     }
 
     [Fact]
@@ -210,6 +219,17 @@ public sealed class ReviewCommandTests : IDisposable
         Assert.Equal(400_000, options.MaxContextChars);
         Assert.Equal(40, options.MaxToolCalls);
         Assert.Equal(["secrets/**", "*.sql", "docs/private/"], options.Exclude);
+        Assert.Null(options.JiraBaseUrl);
+        Assert.Null(options.JiraAcceptanceCriteriaField);
+    }
+
+    [Fact]
+    public void Options_read_the_jira_site_and_acceptance_criteria_field()
+    {
+        var options = ReviewOptions.Parse(["--repo", "octo/shop", "--pr", "7", "--model-provider", "openai", "--model", "m", "--jira-base-url", "https://shop.atlassian.test", "--jira-acceptance-criteria-field", "customfield_10042"]);
+
+        Assert.Equal(new Uri("https://shop.atlassian.test"), options.JiraBaseUrl);
+        Assert.Equal("customfield_10042", options.JiraAcceptanceCriteriaField);
     }
 
     [Theory]
@@ -222,6 +242,11 @@ public sealed class ReviewCommandTests : IDisposable
     [InlineData("--repo", "octo/shop", "--pr", "7", "--model", "m")]
     [InlineData("--repo", "octo/shop", "--pr", "7", "--model-provider", "openai", "--model", "m", "--unknown", "x")]
     [InlineData("--repo", "octo/shop", "--pr", "7", "--model-provider", "openai", "--model")]
+    [InlineData("--repo", "octo/shop", "--pr", "7", "--model-provider", "openai", "--model", "m", "--jira-base-url", "http://shop.atlassian.test")]
+    [InlineData("--repo", "octo/shop", "--pr", "7", "--model-provider", "openai", "--model", "m", "--jira-base-url", "shop.atlassian.test")]
+    [InlineData("--repo", "octo/shop", "--pr", "7", "--model-provider", "openai", "--model", "m", "--jira-base-url", "https://user:pass@shop.atlassian.test")]
+    [InlineData("--repo", "octo/shop", "--pr", "7", "--model-provider", "openai", "--model", "m", "--jira-base-url", "https://shop.atlassian.test/?a=b")]
+    [InlineData("--repo", "octo/shop", "--pr", "7", "--model-provider", "openai", "--model", "m", "--jira-acceptance-criteria-field", "customfield_1,reporter")]
     public void Invalid_options_are_usage_errors(params string[] args)
     {
         Assert.Throws<UsageException>(() => ReviewOptions.Parse(args));
@@ -232,5 +257,6 @@ public sealed class ReviewCommandTests : IDisposable
         workspace.Dispose();
         output.Dispose();
         gitHub.Dispose();
+        jira.Dispose();
     }
 }
