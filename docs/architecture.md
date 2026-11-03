@@ -23,7 +23,7 @@ Pull-request authors trigger a review by marking a pull request ready or comment
 
 ## Data Model
 
-No database. The review result (`result.json`, `schemaVersion` 1) passes from the review job to the comment job as a workflow artifact: repository, pull-request number, head SHA, context hash, requirement link, coverage, findings with fingerprints, dropped counts by reason, and usage. The summary comment keeps a hidden record (`<!-- integricode:record ... -->`) of the published findings and the run's usage on the pull request; inline findings carry `<!-- integricode:finding:<fingerprint> -->`.
+No database. The review result (`result.json`, `schemaVersion` 2) passes from the review job to the comment job as a workflow artifact: repository, pull-request number, head SHA, context hash, requirement link, coverage, language, findings with lights, lenses, fixes, suggestions, and fingerprints, the requirement verdict, injection warnings, lenses used, dropped counts by reason, and usage. The summary comment keeps a hidden record (`<!-- integricode:record ... -->`) of the published findings and the run's usage on the pull request; inline findings carry `<!-- integricode:finding:<fingerprint> -->`.
 
 ## Integrations
 
