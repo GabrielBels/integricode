@@ -36,6 +36,7 @@ public sealed class ReviewThenCommentTests : IDisposable
     private static JsonObject Finding(string kind, string title, string path, int line, string scenario, string? quote = null) => new()
     {
         ["kind"] = kind,
+        ["severity"] = "blocking",
         ["title"] = title,
         ["path"] = path,
         ["line"] = line,
@@ -154,7 +155,7 @@ public sealed class ReviewThenCommentTests : IDisposable
 
         Assert.Equal(summaryId, Summary.Id);
         Assert.Contains("| Head SHA | `3333333333333333333333333333333333333333` |", Summary.Body);
-        Assert.Contains("| Findings | 1 requirement mismatch, 0 bugs |", Summary.Body);
+        Assert.Contains("| Findings | 1 requirement mismatch, 0 code findings |", Summary.Body);
         Assert.Single(gitHub.Reviews);
         Assert.Equal([averageComment.NodeId], gitHub.Minimized);
     }

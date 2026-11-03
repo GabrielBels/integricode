@@ -7,7 +7,7 @@ namespace Integricode.Domain;
 /// <summary>The review result handed from the review job to the comment job as <c>result.json</c>.</summary>
 public sealed record ReviewResult
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     public static JsonSerializerOptions JsonOptions { get; } = new(JsonSerializerDefaults.Web)
     {
@@ -33,9 +33,21 @@ public sealed record ReviewResult
 
     public required Coverage Coverage { get; init; }
 
+    /// <summary>The language of the model's text and of the published labels (<see cref="ReviewLanguage"/>).</summary>
+    public string Language { get; init; } = ReviewLanguage.English;
+
     public IReadOnlyList<Finding> Findings { get; init; } = [];
 
-    /// <summary>Dropped findings by drop reason (FR-11).</summary>
+    /// <summary>Whether the change does what the requirement asks; null when no requirement was read or the model gave none.</summary>
+    public RequirementVerdict? Verdict { get; init; }
+
+    /// <summary>Input text that reads like instructions to an AI reviewer.</summary>
+    public IReadOnlyList<InjectionWarning> InjectionWarnings { get; init; } = [];
+
+    /// <summary>The review lenses the instructions carried, chosen by the changed files.</summary>
+    public IReadOnlyList<string> Lenses { get; init; } = [];
+
+    /// <summary>Dropped findings and verdict rows by drop reason (FR-11).</summary>
     public IReadOnlyDictionary<string, int> Dropped { get; init; } = new Dictionary<string, int>();
 
     public Usage Usage { get; init; } = new();

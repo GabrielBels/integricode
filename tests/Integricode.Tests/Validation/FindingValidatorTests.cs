@@ -13,16 +13,24 @@ public class FindingValidatorTests
     [
         new PullRequestFile("src/Cart.cs", "modified", "@@ -3,2 +3,3 @@\n context\n+added\n+added2\n"),
         new PullRequestFile("src/Removed.cs", "removed", "@@ -1 +0,0 @@\n-gone"),
+        new PullRequestFile("README.md", "modified", "@@ -1,4 +1,4 @@\n+```bash\n+npm install\n+```\n+Run the tests."),
+        new PullRequestFile("GUIDE.md", "modified", "@@ -1,4 +1,4 @@\n+```markdown\n+Example:\n+```bash\n+npm install"),
     ]);
 
+    private static readonly Dictionary<string, string[]> HeadLines = new()
+    {
+        ["README.md"] = ["```bash", "npm install", "```", "Run the tests."],
+        ["GUIDE.md"] = ["```markdown", "Example:", "```bash", "npm install"],
+    };
+
     private static FindingValidator Validator(string? requirement = Requirement) =>
-        new(Diff, requirement, path => path == "src/Cart.cs" ? 10 : null);
+        new(Diff, requirement, path => path is "src/Cart.cs" or "README.md" or "GUIDE.md" ? 10 : null, (path, line) => HeadLines.GetValueOrDefault(path)?.ElementAtOrDefault(line - 1));
 
     private static ProposedFinding Bug(string? path = "src/Cart.cs", int? line = 4, string? scenario = "Total(null) throws.", string? title = "Null prices") =>
-        new("bug", title, path, line, scenario, null);
+        new("bug", title, path, line, scenario, null, "blocking");
 
     private static ProposedFinding Mismatch(string? quote = "The total applies every discount.", int? line = 3) =>
-        new("requirement-mismatch", "Discounts ignored", "src/Cart.cs", line, "A 10% discount is not applied.", quote);
+        new("requirement-mismatch", "Discounts ignored", "src/Cart.cs", line, "A 10% discount is not applied.", quote, "blocking");
 
     [Fact]
     public void A_valid_bug_and_a_valid_mismatch_are_kept()
@@ -76,7 +84,7 @@ public class FindingValidatorTests
     [InlineData("src/Removed.cs", 1)]
     public void A_line_that_does_not_exist_at_the_head_sha_is_dropped(string path, int line)
     {
-        AssertDropped(Validator().Validate([new ProposedFinding("requirement-mismatch", "t", path, line, "s", "An empty cart totals zero.")]), DropReason.LineNotFound);
+        AssertDropped(Validator().Validate([new ProposedFinding("requirement-mismatch", "t", path, line, "s", "An empty cart totals zero.", "blocking")]), DropReason.LineNotFound);
     }
 
     [Theory]
@@ -89,14 +97,16 @@ public class FindingValidatorTests
 
     public static TheoryData<ProposedFinding> MissingFields() =>
     [
-        new ProposedFinding(null, "t", "src/Cart.cs", 4, "s", null),
-        new ProposedFinding("nitpick", "t", "src/Cart.cs", 4, "s", null),
-        new ProposedFinding("bug", " ", "src/Cart.cs", 4, "s", null),
-        new ProposedFinding("bug", "t", null, 4, "s", null),
-        new ProposedFinding("bug", "t", "src/Cart.cs", null, "s", null),
-        new ProposedFinding("bug", "t", "src/Cart.cs", 0, "s", null),
-        new ProposedFinding("bug", "t", "src/Cart.cs", 4, "", null),
-        new ProposedFinding("requirement-mismatch", "t", "src/Cart.cs", 4, "s", null),
+        new ProposedFinding(null, "t", "src/Cart.cs", 4, "s", null, "blocking"),
+        new ProposedFinding("nitpick", "t", "src/Cart.cs", 4, "s", null, "blocking"),
+        new ProposedFinding("bug", " ", "src/Cart.cs", 4, "s", null, "blocking"),
+        new ProposedFinding("bug", "t", null, 4, "s", null, "blocking"),
+        new ProposedFinding("bug", "t", "src/Cart.cs", null, "s", null, "blocking"),
+        new ProposedFinding("bug", "t", "src/Cart.cs", 0, "s", null, "blocking"),
+        new ProposedFinding("bug", "t", "src/Cart.cs", 4, "", null, "blocking"),
+        new ProposedFinding("requirement-mismatch", "t", "src/Cart.cs", 4, "s", null, "blocking"),
+        new ProposedFinding("bug", "t", "src/Cart.cs", 4, "s", null),
+        new ProposedFinding("bug", "t", "src/Cart.cs", 4, "s", null, "critical"),
     ];
 
     [Theory]
@@ -129,10 +139,105 @@ public class FindingValidatorTests
     [Fact]
     public void Paths_and_kinds_are_normalized()
     {
-        var outcome = Validator().Validate([new ProposedFinding("Bug", "t", "./src\\Cart.cs", 4, "s", null), new ProposedFinding("RequirementMismatch", "t", "/src/Cart.cs", 5, "s", "An empty cart totals zero.")]);
+        var outcome = Validator().Validate([new ProposedFinding("Bug", "t", "./src\\Cart.cs", 4, "s", null, "blocking"), new ProposedFinding("RequirementMismatch", "t", "/src/Cart.cs", 5, "s", "An empty cart totals zero.", "blocking")]);
 
         Assert.Equal(["src/Cart.cs", "src/Cart.cs"], outcome.Findings.Select(f => f.Path));
         Assert.Equal([FindingKind.Bug, FindingKind.RequirementMismatch], outcome.Findings.Select(f => f.Kind));
+    }
+
+    [Theory]
+    [InlineData("blocking", "bug", FindingSeverity.Blocking, "bug")]
+    [InlineData("issue (blocking)", "security (OWASP A03)", FindingSeverity.Blocking, "security")]
+    [InlineData("suggestion", "performance", FindingSeverity.Suggestion, "performance")]
+    [InlineData("nit", "Tests", FindingSeverity.Nitpick, "tests")]
+    [InlineData("note", "style", FindingSeverity.Note, "bug")]
+    [InlineData("Note", null, FindingSeverity.Note, "bug")]
+    public void A_finding_keeps_its_light_and_lens_and_an_unknown_lens_becomes_bug(string severity, string? lens, FindingSeverity expectedSeverity, string expectedLens)
+    {
+        var finding = Assert.Single(Validator().Validate([Bug() with { Severity = severity, Lens = lens, Fix = "  Guard against null.  " }]).Findings);
+
+        Assert.Equal(expectedSeverity, finding.Severity);
+        Assert.Equal(expectedLens, finding.Lens);
+        Assert.Equal("Guard against null.", finding.Fix);
+    }
+
+    [Theory]
+    [InlineData(4, "        if (prices is null) return 0;")]
+    [InlineData(3, "context\r\n        if (prices is null) return 0;")]
+    [InlineData(null, "```csharp\n        if (prices is null) return 0;\n```")]
+    public void A_suggestion_over_diff_lines_is_kept_without_a_fence(int? startLine, string code)
+    {
+        var finding = Assert.Single(Validator().Validate([Bug() with { SuggestionStartLine = startLine, Suggestion = code }]).Findings);
+
+        Assert.Equal(startLine ?? 4, finding.Suggestion!.StartLine);
+        Assert.EndsWith("        if (prices is null) return 0;", finding.Suggestion.Code, StringComparison.Ordinal);
+        Assert.DoesNotContain("```", finding.Suggestion.Code, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_suggestion_for_markdown_keeps_the_fences_it_replaces()
+    {
+        var finding = Assert.Single(Validator().Validate([Bug(path: "README.md", line: 3) with { SuggestionStartLine = 1, Suggestion = "```bash\nnpm ci\n```" }]).Findings);
+
+        Assert.Equal("```bash\nnpm ci\n```", finding.Suggestion!.Code);
+    }
+
+    [Theory]
+    [InlineData("```markdown\nRun `npm ci` first.\n```")]
+    [InlineData("```md\nRun `npm ci` first.\n```")]
+    [InlineData("``` markdown\nRun `npm ci` first.\n```")]
+    [InlineData("```markdown title=\"x\"\nRun `npm ci` first.\n```")]
+    [InlineData("```markdown\tx\nRun `npm ci` first.\n```")]
+    public void A_markdown_tagged_wrapper_around_prose_is_removed(string suggestion)
+    {
+        var finding = Assert.Single(Validator().Validate([Bug(path: "README.md", line: 4) with { SuggestionStartLine = 4, Suggestion = suggestion }]).Findings);
+
+        Assert.Equal("Run `npm ci` first.", finding.Suggestion!.Code);
+    }
+
+    [Fact]
+    public void A_longer_markdown_wrapper_around_prose_keeps_the_code_block_it_holds()
+    {
+        var finding = Assert.Single(Validator().Validate([Bug(path: "README.md", line: 4) with { SuggestionStartLine = 4, Suggestion = "````markdown\nRun:\n```bash\nnpm ci\n```\n````" }]).Findings);
+
+        Assert.Equal("Run:\n```bash\nnpm ci\n```", finding.Suggestion!.Code);
+    }
+
+    [Fact]
+    public void A_markdown_fence_that_lengthens_a_markdown_example_is_kept_as_content()
+    {
+        const string fix = "````markdown\nExample:\n```bash\nnpm ci\n```\n````";
+
+        var finding = Assert.Single(Validator().Validate([Bug(path: "GUIDE.md", line: 4) with { SuggestionStartLine = 1, Suggestion = fix }]).Findings);
+
+        Assert.Equal(fix, finding.Suggestion!.Code);
+    }
+
+    [Fact]
+    public void A_markdown_wrapper_around_a_replaced_code_block_is_removed()
+    {
+        var finding = Assert.Single(Validator().Validate([Bug(path: "README.md", line: 3) with { SuggestionStartLine = 1, Suggestion = "````markdown\n```bash\nnpm ci\n```\n````" }]).Findings);
+
+        Assert.Equal("```bash\nnpm ci\n```", finding.Suggestion!.Code);
+    }
+
+    public static TheoryData<int?, string> UnpublishableSuggestions() => new()
+    {
+        { 2, "a\nb\nc" },
+        { 5, "a" },
+        { 0, "a" },
+        { 4, "   \n  " },
+        { 4, new string('x', FindingValidator.MaxSuggestionLength + 1) },
+        { 4, string.Join('\n', Enumerable.Repeat("x", FindingValidator.MaxSuggestionLines + 1)) },
+    };
+
+    [Theory]
+    [MemberData(nameof(UnpublishableSuggestions))]
+    public void A_suggestion_off_the_diff_empty_or_too_large_is_left_out_and_the_finding_kept(int? startLine, string code)
+    {
+        var finding = Assert.Single(Validator().Validate([Bug() with { SuggestionStartLine = startLine, Suggestion = code }]).Findings);
+
+        Assert.Null(finding.Suggestion);
     }
 
     private static void AssertDropped(ValidationOutcome outcome, string reason)

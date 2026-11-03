@@ -30,7 +30,7 @@ public class ReviewResultTests
         var json = original.Serialize();
         var restored = ReviewResult.Deserialize(json);
 
-        Assert.Contains("\"schemaVersion\": 1", json);
+        Assert.Contains("\"schemaVersion\": 2", json);
         Assert.Equal(ReviewResult.CurrentSchemaVersion, restored.SchemaVersion);
         Assert.Equal(original.Repository, restored.Repository);
         Assert.Equal(original.PullRequestNumber, restored.PullRequestNumber);
@@ -68,7 +68,7 @@ public class ReviewResultTests
     }
 
     [Theory]
-    [InlineData("{\"schemaVersion\": 2, \"repository\": \"o/r\", \"pullRequestNumber\": 1, \"headSha\": \"x\", \"coverage\": {\"state\": \"complete\", \"reasons\": []}}")]
+    [InlineData("{\"schemaVersion\": 1, \"repository\": \"o/r\", \"pullRequestNumber\": 1, \"headSha\": \"x\", \"coverage\": {\"state\": \"complete\", \"reasons\": []}}")]
     [InlineData("{\"repository\": \"o/r\", \"pullRequestNumber\": 1, \"headSha\": \"x\", \"coverage\": {\"state\": \"complete\", \"reasons\": []}}")]
     public void Unsupported_or_missing_schema_version_is_rejected(string json)
     {

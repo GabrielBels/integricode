@@ -13,9 +13,9 @@ public sealed class JiraReviewCoverageTests : IDisposable
 {
     private const string Findings = """
         {"findings": [
-          {"kind": "requirement-mismatch", "title": "Discounts ignored", "path": "src/Cart.cs", "line": 4,
+          {"severity": "blocking", "kind": "requirement-mismatch", "title": "Discounts ignored", "path": "src/Cart.cs", "line": 4,
            "failureScenario": "A 10% discount is not applied.", "requirementQuote": "The total applies every discount in the cart."},
-          {"kind": "bug", "title": "Null prices", "path": "src/Cart.cs", "line": 4, "failureScenario": "Total(null) throws."}
+          {"severity": "blocking", "kind": "bug", "title": "Null prices", "path": "src/Cart.cs", "line": 4, "failureScenario": "Total(null) throws."}
         ]}
         """;
 

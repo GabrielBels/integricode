@@ -48,6 +48,7 @@ public sealed class JiraReviewThenCommentTests : IDisposable
     private static JsonObject Finding(string kind, string title, int line, string scenario, string? quote = null) => new()
     {
         ["kind"] = kind,
+        ["severity"] = "blocking",
         ["title"] = title,
         ["path"] = "src/Cart.cs",
         ["line"] = line,
@@ -99,9 +100,9 @@ public sealed class JiraReviewThenCommentTests : IDisposable
 
         // The model saw the issue's text as the requirement, without any author.
         var prompt = string.Join("\n", model.Calls[0].Messages.SelectMany(m => m.Contents).OfType<TextContent>().Select(t => t.Text));
-        Assert.Contains("<requirement id=\"SHOP-12\">\n# SHOP-12: Cart totals apply discounts\n\n## Description\n\n# Cart totals\n\nThe cart shows a total for the items in it.", prompt);
+        Assert.Contains(" id=\"SHOP-12\">\n# SHOP-12: Cart totals apply discounts\n\n## Description\n\n# Cart totals\n\nThe cart shows a total for the items in it.", prompt);
         Assert.Contains("## Acceptance Criteria\n\n- The total applies every discount in the cart.\n- An empty cart averages zero.", prompt);
-        Assert.Contains("### Comment 3\n\nFree items still count as items.\n</requirement>", prompt);
+        Assert.Contains("### Comment 3\n\nFree items still count as items.\n</requirement-", prompt);
         Assert.DoesNotContain(FakeJira.AuthorName, prompt);
         Assert.DoesNotContain(FakeJira.AuthorEmail, prompt);
 
@@ -110,7 +111,7 @@ public sealed class JiraReviewThenCommentTests : IDisposable
         Assert.All(jira.Requests, request => Assert.Equal(HttpMethod.Get, request.Method));
         var summary = Assert.Single(gitHub.IssueComments).Body;
         Assert.Contains("SHOP-12", summary);
-        Assert.Contains("| Findings | 2 requirement mismatches, 1 bug |", summary);
+        Assert.Contains("| Findings | 2 requirement mismatches, 1 code finding |", summary);
         var inline = Assert.Single(gitHub.Reviews).Comments.Select(c => c.Body).ToList();
         Assert.Equal(3, inline.Count);
         Assert.Contains(inline, body => body.Contains("Discounts are percentages, not flat amounts.", StringComparison.Ordinal));

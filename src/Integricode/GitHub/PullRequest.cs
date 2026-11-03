@@ -11,5 +11,8 @@ public sealed record PullRequest(
     string? HeadRepository,
     bool Draft);
 
-/// <summary>A file of the pull request; <see cref="Patch"/> is null for binary or too-large diffs.</summary>
-public sealed record PullRequestFile(string Path, string Status, string? Patch);
+/// <summary>
+/// A file of the pull request; <see cref="Patch"/> is null for binary or too-large diffs, and for a rename with no
+/// change. <see cref="Additions"/> is the number of lines it adds, or null when unknown.
+/// </summary>
+public sealed record PullRequestFile(string Path, string Status, string? Patch, int? Additions = null);

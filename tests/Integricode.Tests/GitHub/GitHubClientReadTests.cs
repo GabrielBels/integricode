@@ -29,7 +29,7 @@ public class GitHubClientReadTests
     {
         var handler = new FakeHttpHandler()
             .OnJson(HttpMethod.Get, "/repos/octo/shop/pulls/7/files?per_page=100", """
-                [{"filename": "src/A.cs", "status": "modified", "patch": "@@ -1 +1 @@\n-a\n+b"}]
+                [{"filename": "src/A.cs", "status": "modified", "patch": "@@ -1 +1 @@\n-a\n+b", "additions": 1}]
                 """, link: "<https://api.github.test/repos/octo/shop/pulls/7/files?per_page=100&page=2>; rel=\"next\", <https://api.github.test/repos/octo/shop/pulls/7/files?per_page=100&page=2>; rel=\"last\"")
             .OnJson(HttpMethod.Get, "/repos/octo/shop/pulls/7/files?per_page=100&page=2", """
                 [{"filename": "img/logo.png", "status": "added"}]
@@ -38,7 +38,7 @@ public class GitHubClientReadTests
         var files = await Client(handler).GetPullRequestFilesAsync("octo/shop", 7, CancellationToken.None);
 
         Assert.Equal(
-            [new PullRequestFile("src/A.cs", "modified", "@@ -1 +1 @@\n-a\n+b"), new PullRequestFile("img/logo.png", "added", null)],
+            [new PullRequestFile("src/A.cs", "modified", "@@ -1 +1 @@\n-a\n+b", 1), new PullRequestFile("img/logo.png", "added", null)],
             files);
         Assert.Equal(2, handler.Requests.Count);
     }

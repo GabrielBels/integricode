@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Agent/ReviewInstructions.md" LogicalName="Integricode.Agent.ReviewInstructions.md" />
+    <EmbeddedResource Include="Agent/Lenses/*.md" LogicalName="Integricode.Agent.Lenses.%(Filename).md" />
   </ItemGroup>
 
   <ItemGroup>

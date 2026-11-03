@@ -27,6 +27,11 @@ Domain terms and the names they have in code. PRDs, requirements, and new code u
 | Publisher | The step that posts validated findings to the pull request, using its own write credential; implemented as the comment job. | `CommentCommand` |
 | Review job | The workflow job that gates the event, reads the pull request, the requirement, and the code, runs the review, and writes the review result; it has no write permission. | `ReviewCommand` |
 | Comment job | The workflow job that publishes the review result on the pull request; it holds only the pull-request write permission. | `CommentCommand` |
-| Review result | The file the review job hands to the comment job: head SHA, context hash, coverage, findings, dropped counts, and usage. | `ReviewResult` (`result.json`) |
+| Review result | The file the review job hands to the comment job: head SHA, context hash, coverage, language, findings with their lights, lenses, fixes, and suggestions, the requirement verdict, injection warnings, lenses used, dropped counts, and usage. | `ReviewResult` (`result.json`) |
 | Repository tools | The read-only tools the review agent uses to read, search, and list files of the head-SHA checkout, within the context budget. | `RepositoryTools` |
+| Traffic light | A finding's severity: 🔴 `issue (blocking)` blocks the merge, 🟡 `suggestion` is the author's call, 🟢 `nitpick` or `note` is a detail or context; the summary opens with the count of each. | `FindingSeverity` |
+| Lens | The review angle of one stack (C#, Python, React and TypeScript, GitHub Actions, containers, contracts and dependencies, docs, security), chosen by the pull request's files and named on each finding. | `LensCatalog`, `Finding.Lens` |
+| Requirement verdict | Whether the change solves its requirement (yes, partly, no), with one row per acceptance criterion quoted verbatim. | `RequirementVerdict` |
+| Data boundary | The random per-run suffix on every data block's tags in the prompt, which text in the data cannot know or close. | `ReviewWorkflow.BuildPrompt` |
+| Injection warning | A line of the requirement, an added line of the diff, or a line of a file sent whole without its patch (except a rename or copy that adds no line) that reads like instructions to an AI reviewer, found outside the model and listed in the summary. | `InjectionTripwire`, `InjectionWarning` |
 | Context budget | The limits on what a review may read: the diff, the changed files' content, and tool results count toward 400,000 characters, tool calls toward 40, by default. | `ContextBudget` |

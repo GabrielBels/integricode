@@ -45,6 +45,25 @@ public sealed partial class DiffMap
             return new FileDiff(changed, shown, HasPatch: false);
         }
 
+        foreach (var line in RightSideLines(patch))
+        {
+            shown.Add(line.Number);
+            if (line.Added)
+            {
+                changed.Add(line.Number);
+            }
+        }
+
+        return new FileDiff(changed, shown, HasPatch: true);
+    }
+
+    /// <summary>The lines a patch adds or modifies, with their right-side line numbers and text without the <c>+</c>.</summary>
+    /// <param name="patch">A unified-diff patch as GitHub returns it.</param>
+    /// <returns>The added lines in patch order.</returns>
+    public static IEnumerable<PatchLine> AddedLines(string patch) => RightSideLines(patch).Where(line => line.Added);
+
+    private static IEnumerable<PatchLine> RightSideLines(string patch)
+    {
         var rightLine = 0;
         var inHunk = false;
         var body = patch.EndsWith('\n') ? patch[..^1] : patch;
@@ -68,21 +87,16 @@ public sealed partial class DiffMap
             switch (line.Length == 0 ? ' ' : line[0])
             {
                 case '+':
-                    changed.Add(rightLine);
-                    shown.Add(rightLine);
-                    rightLine++;
+                    yield return new PatchLine(rightLine++, line[1..], Added: true);
                     break;
                 case ' ':
-                    shown.Add(rightLine);
-                    rightLine++;
+                    yield return new PatchLine(rightLine++, line.Length == 0 ? line : line[1..], Added: false);
                     break;
                 default:
                     // '-' lines exist only on the left side; '\' marks "No newline at end of file".
                     break;
             }
         }
-
-        return new FileDiff(changed, shown, HasPatch: true);
     }
 
     [GeneratedRegex(@"^@@ -\d+(?:,\d+)? \+(?<start>\d+)(?:,\d+)? @@")]
@@ -90,3 +104,6 @@ public sealed partial class DiffMap
 }
 
 public sealed record FileDiff(IReadOnlySet<int> ChangedLines, IReadOnlySet<int> DiffLines, bool HasPatch);
+
+/// <summary>A right-side line of a patch: its head-commit line number, its text, and whether the patch adds it.</summary>
+public sealed record PatchLine(int Number, string Text, bool Added);

@@ -15,6 +15,12 @@ public sealed record PathCheck(bool Allowed, string FullPath, string RelativePat
 /// </summary>
 public sealed class PathGuard
 {
+    public const string AbsoluteRefusal = "absolute paths are not allowed";
+    public const string ParentRefusal = "parent directory segments are not allowed";
+    public const string OutsideRefusal = "the path leaves the checkout";
+    public const string ExcludedRefusal = "the path is excluded from the review context";
+    public const string LinkRefusal = "a symbolic link leaves the checkout";
+
     public static IReadOnlyList<string> DefaultExclusions { get; } =
     [
         ".git/",
@@ -66,20 +72,20 @@ public sealed class PathGuard
         var path = (relativePath ?? string.Empty).Trim();
         if (Path.IsPathRooted(path) || path.StartsWith('/') || path.StartsWith('\\') || path.Contains(':'))
         {
-            return PathCheck.Refuse("absolute paths are not allowed");
+            return PathCheck.Refuse(AbsoluteRefusal);
         }
 
         var segments = path.Split('/', '\\').Where(s => s.Length > 0 && s != ".").ToArray();
         if (segments.Contains(".."))
         {
-            return PathCheck.Refuse("parent directory segments are not allowed");
+            return PathCheck.Refuse(ParentRefusal);
         }
 
         var normalized = string.Join('/', segments);
         var fullPath = segments.Length == 0 ? Root : Path.GetFullPath(Path.Combine(Root, Path.Combine(segments)));
         if (!IsInside(fullPath))
         {
-            return PathCheck.Refuse("the path leaves the checkout");
+            return PathCheck.Refuse(OutsideRefusal);
         }
 
         var (linkRefusal, targetPath) = ResolveLinks(segments);
@@ -91,7 +97,7 @@ public sealed class PathGuard
         // Both the requested path and the path a link leads to must be allowed: notes.txt -> .env is still .env.
         if (applyExclusions && (IsExcluded(normalized) || IsExcluded(targetPath)))
         {
-            return PathCheck.Refuse("the path is excluded from the review context");
+            return PathCheck.Refuse(ExcludedRefusal);
         }
 
         return new PathCheck(true, fullPath, normalized, null);
@@ -126,7 +132,7 @@ public sealed class PathGuard
             var target = info.ResolveLinkTarget(returnFinalTarget: true);
             if (target is null || !IsInside(Path.GetFullPath(target.FullName)))
             {
-                return ("a symbolic link leaves the checkout", string.Empty);
+                return (LinkRefusal, string.Empty);
             }
 
             current = Path.GetFullPath(target.FullName);

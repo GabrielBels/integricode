@@ -6,11 +6,12 @@ namespace Integricode.Commands;
 
 /// <summary>The <c>comment</c> command's options.</summary>
 /// <param name="SkippedByPolicy">The policy that stopped the review (only <c>fork</c>); set, no result file is read.</param>
-public sealed record CommentOptions(string Repository, int PullRequest, string ResultPath, string? SkippedByPolicy = null)
+/// <param name="Language">The labels' language when no result file is read; a result carries its own.</param>
+public sealed record CommentOptions(string Repository, int PullRequest, string ResultPath, string? SkippedByPolicy = null, string Language = ReviewLanguage.English)
 {
     public const string ForkPolicy = "fork";
 
-    private static readonly IReadOnlySet<string> Allowed = new HashSet<string>(StringComparer.Ordinal) { "repo", "pr", "result", "skipped-by-policy" };
+    private static readonly IReadOnlySet<string> Allowed = new HashSet<string>(StringComparer.Ordinal) { "repo", "pr", "result", "skipped-by-policy", "language" };
 
     /// <exception cref="UsageException">An option is missing or invalid.</exception>
     public static CommentOptions Parse(IReadOnlyList<string> args)
@@ -22,7 +23,12 @@ public sealed record CommentOptions(string Repository, int PullRequest, string R
             throw new UsageException($"Option --skipped-by-policy must be {ForkPolicy}.");
         }
 
-        return new CommentOptions(commandLine.Repository(), commandLine.PullRequestNumber(), commandLine.Optional("result") ?? "result.json", policy);
+        return new CommentOptions(
+            commandLine.Repository(),
+            commandLine.PullRequestNumber(),
+            commandLine.Optional("result") ?? "result.json",
+            policy,
+            ReviewOptions.ParseLanguage(commandLine.Optional("language")));
     }
 }
 
@@ -102,6 +108,7 @@ public sealed class CommentCommand(GitHubClient gitHub, ActionsLog log, string p
             PullRequestNumber = options.PullRequest,
             HeadSha = pullRequest.HeadSha,
             Coverage = Coverage.SkippedByPolicy(ForkReason),
+            Language = options.Language,
         };
 
         await UpsertSummaryAsync(options, await FindSummaryAsync(options, cancellationToken), CommentTemplates.Summary(result, []), cancellationToken);
@@ -146,13 +153,19 @@ public sealed class CommentCommand(GitHubClient gitHub, ActionsLog log, string p
         var fresh = inline.Where(f => !visibleFingerprints.Contains(f.Fingerprint)).ToList();
         if (fresh.Count > 0)
         {
-            var comments = fresh.Select(f => new InlineComment(f.Path, f.Line, CommentTemplates.InlineComment(f, result.HeadSha))).ToList();
-            await gitHub.CreateCommentReviewAsync(options.Repository, options.PullRequest, result.HeadSha, CommentTemplates.ReviewBody(fresh.Count, result.HeadSha), comments, cancellationToken);
+            var comments = fresh
+                .Select(f => new InlineComment(f.Path, f.Line, CommentTemplates.InlineComment(f, result.HeadSha, result.Language), StartLineOf(f)))
+                .ToList();
+            await gitHub.CreateCommentReviewAsync(options.Repository, options.PullRequest, result.HeadSha, CommentTemplates.ReviewBody(result, fresh.Count), comments, cancellationToken);
         }
 
         await UpsertSummaryAsync(options, await FindSummaryAsync(options, cancellationToken), CommentTemplates.Summary(result, offDiff), cancellationToken);
         log.Info($"Published {fresh.Count} inline findings ({inline.Count - fresh.Count} already published), {offDiff.Count} in the summary; minimized {minimized} outdated.");
     }
+
+    // A suggestion over several lines anchors the comment on its whole range, so GitHub replaces exactly those lines.
+    private static int? StartLineOf(Finding finding) =>
+        finding.Suggestion is { } suggestion && suggestion.StartLine < finding.Line ? suggestion.StartLine : null;
 
     private async Task<GitHubComment?> FindSummaryAsync(CommentOptions options, CancellationToken cancellationToken) =>
         (await gitHub.ListIssueCommentsAsync(options.Repository, options.PullRequest, cancellationToken))

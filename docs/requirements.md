@@ -73,3 +73,26 @@
 **Goal brief**: [REQ-003](goals/REQ-003.md)
 
 ---
+
+## [REQ-004] Traffic-Light Review Format and Prompt-Injection Guardrails
+
+**Description**: The review follows the method of the dev-flow `pr-review` skill and publishes in its format: every finding carries a traffic light, a Conventional Comments label, a lens, a fix, and, when small, a one-click suggestion, and the summary opens with a scoreboard and says whether the change solves its requirement, criterion by criterion. Text the pull request controls cannot steer the review: it reaches the model inside blocks it cannot close, and a check outside the model warns when it reads like instructions to an AI reviewer.
+
+**Priority**: High
+
+**Source**: PRD-001 (FR-9, FR-10, FR-11, FR-13)
+
+**Acceptance Criteria**:
+- [x] Every finding has a light (`blocking`, `suggestion`, `nitpick`, or `note`), a lens, and an optional fix; a finding without a valid light is dropped as a missing field.
+- [x] The instructions carry the `pr-review` review angles, traffic-light categories, and risk table, plus the lenses the pull request's files call for (C#, Python, React and TypeScript, GitHub Actions, containers, contracts and dependencies, docs, and security for every change beyond docs).
+- [x] An inline comment opens with the light, its Conventional Comments label, a bold headline, and the lens, then the failure scenario, the fix, and a GitHub suggestion when one passes validation.
+- [x] A suggestion is published only when every line it replaces is a diff line, it has at most 20 lines and 2,000 characters, and it is not empty; a multi-line suggestion anchors the comment on its whole range; suggested code sits in a fence longer than any backtick run in it.
+- [x] The summary opens with the scoreboard (`🔴 n · 🟡 n · 🟢 n`) and a merge verdict that says "good to merge" only when nothing blocks, the requirement verdict is yes (when a requirement is linked), the coverage is complete, and the tripwire found no suspicious text.
+- [x] With a requirement, the summary says whether the change solves it (yes, partly, no) and lists the criteria not covered; a criterion row whose quote is not verbatim requirement text is dropped and counted, and a "yes" without a surviving row, with any row dropped, or that a row or a blocking requirement mismatch contradicts is published as "partly".
+- [x] Every data block of the prompt is wrapped in tags whose names end with a random per-run boundary, and attribute values are escaped, so file names and file text cannot open or close a block; the pull request's title, description, branch name, and commit messages never reach the model.
+- [x] Lines the diff adds, files sent whole without their patch (except a rename or copy that GitHub reports adds no line), and the requirement text are scanned outside the model for phrases addressed to an AI reviewer, in English and Portuguese; each hit is listed in the summary with its location, escaped, in file order, at most 10.
+- [x] The `language` input (`en` or `pt-BR`, default `en`) sets the language of the model's text, of every published label, and of the known coverage reasons.
+
+**Context/Notes**: Requires REQ-001 and REQ-003. Owner decisions of 2026-11-03: follow `pr-review` in format and method ("Formato + método") and add guardrails against prompt injection through the pull request and its commits. The lenses are adapted copies of the skill's references, embedded in the tool; the live OWASP fetch and the chat report stay out, since the review job has no network. Ask First settled: the context sent to the model (method, lenses, data boundary), the published fields (scoreboard, verdict, suggestions, injection warnings), and the `language` input. ADR [ADR-006](decisions/ADR-006-pr-review-method-and-untrusted-input-boundary.md).
+
+---

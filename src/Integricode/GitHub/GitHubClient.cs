@@ -64,7 +64,7 @@ public sealed partial class GitHubClient
         var files = new List<PullRequestFile>();
         await foreach (var dto in GetPagesAsync<FileDto>(Relative($"repos/{repository}/pulls/{number}/files?per_page=100"), cancellationToken))
         {
-            files.Add(new PullRequestFile(dto.Filename, dto.Status ?? "modified", dto.Patch));
+            files.Add(new PullRequestFile(dto.Filename, dto.Status ?? "modified", dto.Patch, dto.Additions));
         }
 
         return files;
@@ -95,7 +95,7 @@ public sealed partial class GitHubClient
     /// </summary>
     public async Task CreateCommentReviewAsync(string repository, int number, string commitId, string body, IReadOnlyList<InlineComment> comments, CancellationToken cancellationToken)
     {
-        var review = new ReviewBody(commitId, body, "COMMENT", [.. comments.Select(c => new ReviewCommentBody(c.Path, c.Line, "RIGHT", c.Body))]);
+        var review = new ReviewBody(commitId, body, "COMMENT", [.. comments.Select(c => new ReviewCommentBody(c.Path, c.Line, "RIGHT", c.Body, c.StartLine, c.StartLine is null ? null : "RIGHT"))]);
         using var content = JsonContent.Create(review, options: Json);
         using var response = await SendAsync(HttpMethod.Post, Relative($"repos/{repository}/pulls/{number}/reviews"), content, cancellationToken);
     }
@@ -218,7 +218,7 @@ public sealed partial class GitHubClient
 
     private sealed record RepoDto(string FullName);
 
-    private sealed record FileDto(string Filename, string? Status, string? Patch);
+    private sealed record FileDto(string Filename, string? Status, string? Patch, int? Additions);
 
     private sealed record CommentDto(long Id, string NodeId, string? Body, UserDto? User, string? Path, int? Line);
 
@@ -228,7 +228,13 @@ public sealed partial class GitHubClient
 
     private sealed record ReviewBody(string CommitId, string Body, string Event, IReadOnlyList<ReviewCommentBody> Comments);
 
-    private sealed record ReviewCommentBody(string Path, int Line, string Side, string Body);
+    private sealed record ReviewCommentBody(
+        string Path,
+        int Line,
+        string Side,
+        string Body,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? StartLine,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? StartSide);
 
     // GraphQL names are camelCase, so they are spelled out instead of following the REST snake_case policy.
     private sealed record GraphQlRequest<TVariables>(
@@ -255,8 +261,8 @@ public sealed partial class GitHubClient
 /// <summary>An issue or review comment; <see cref="Path"/> and <see cref="Line"/> are set for review comments.</summary>
 public sealed record GitHubComment(long Id, string NodeId, string Body, string UserLogin, string? Path, int? Line);
 
-/// <summary>An inline comment on a right-side line of the pull request's diff.</summary>
-public sealed record InlineComment(string Path, int Line, string Body);
+/// <summary>An inline comment on a right-side line of the pull request's diff, or on lines <see cref="StartLine"/> to <see cref="Line"/>.</summary>
+public sealed record InlineComment(string Path, int Line, string Body, int? StartLine = null);
 
 /// <summary>A GitHub API call that returned a non-success status; carries no response body.</summary>
 public sealed class GitHubApiException(string method, string path, HttpStatusCode statusCode)

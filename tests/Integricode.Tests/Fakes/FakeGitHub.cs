@@ -151,6 +151,7 @@ public sealed partial class FakeGitHub : HttpMessageHandler
         ["filename"] = file.Path,
         ["status"] = file.Status,
         ["patch"] = file.Patch,
+        ["additions"] = file.Additions,
     };
 
     private static JsonObject CommentJson(FakeComment comment) => new()

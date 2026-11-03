@@ -42,6 +42,10 @@ on:
         description: Repository tool calls the review may make before its coverage becomes incomplete.
         type: number
         default: 40
+      language:
+        description: Language of the review text and of the published labels, en or pt-BR.
+        type: string
+        default: en
     secrets:
       model-api-key:
         description: API key of the model provider.
@@ -168,11 +172,12 @@ jobs:
           EXCLUDE: ${{ inputs.exclude }}
           MAX_CONTEXT_CHARS: ${{ inputs.max-context-chars }}
           MAX_TOOL_CALLS: ${{ inputs.max-tool-calls }}
+          LANGUAGE: ${{ inputs.language }}
         run: |
           set -euo pipefail
           args=(review --repo "$GITHUB_REPOSITORY" --pr "$PR" --workspace "$GITHUB_WORKSPACE" --out "$RUNNER_TEMP/result.json"
             --model-provider "$MODEL_PROVIDER" --model "$MODEL" --requirements-file "$REQUIREMENTS_FILE"
-            --max-context-chars "$MAX_CONTEXT_CHARS" --max-tool-calls "$MAX_TOOL_CALLS")
+            --max-context-chars "$MAX_CONTEXT_CHARS" --max-tool-calls "$MAX_TOOL_CALLS" --language "$LANGUAGE")
           if [ -n "$MODEL_ENDPOINT" ]; then args+=(--model-endpoint "$MODEL_ENDPOINT"); fi
           if [ -n "$EXCLUDE" ]; then args+=(--exclude "$EXCLUDE"); fi
           if [ -n "$JIRA_BASE_URL" ]; then args+=(--jira-base-url "$JIRA_BASE_URL"); fi
@@ -241,10 +246,11 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           PR: ${{ needs.review.outputs.pr }}
           DECISION: ${{ needs.review.outputs.decision }}
+          LANGUAGE: ${{ inputs.language }}
         run: |
           set -euo pipefail
           if [ "$DECISION" = review ]; then
             "$RUNNER_TEMP/integricode/integricode" comment --repo "$GITHUB_REPOSITORY" --pr "$PR" --result "$RUNNER_TEMP/result.json"
           else
-            "$RUNNER_TEMP/integricode/integricode" comment --repo "$GITHUB_REPOSITORY" --pr "$PR" --skipped-by-policy fork
+            "$RUNNER_TEMP/integricode/integricode" comment --repo "$GITHUB_REPOSITORY" --pr "$PR" --skipped-by-policy fork --language "$LANGUAGE"
           fi

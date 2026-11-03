@@ -73,6 +73,7 @@ The caller's `permissions` are the most the reusable workflow's jobs can get; ea
 | `exclude` | empty | Extra paths the review never reads, one glob per line. `.env*`, key and certificate files, lockfiles, binaries, and `*.min.*` are always excluded. |
 | `max-context-chars` | `400000` | Characters the review may read before its coverage becomes incomplete. |
 | `max-tool-calls` | `40` | Repository tool calls the review may make before its coverage becomes incomplete. |
+| `language` | `en` | The language of the review's text and of every published label: `en` or `pt-BR`. Any other value stops the review with a usage error. |
 
 The Jira inputs need a tool release that includes the Jira source (REQ-002). With an older release, setting `jira-base-url` stops the review with a usage error.
 
@@ -95,12 +96,23 @@ Integricode still reports bugs and marks the coverage incomplete, naming what wa
 - **Mark the pull request ready for review.** Draft pull requests and pushes start nothing. A pull request opened as ready, not as a draft, is never marked ready, so it needs the comment below.
 - **Comment `@integricode review`** on a draft or ready pull request to review its current head. Only users with admin, maintain, or write permission can do this; comments from others are ignored.
 
-The workflow run shows two jobs, `review` and `comment`. On the pull request you get:
+The workflow run shows two jobs, `review` and `comment`. The review follows the method and the format of the dev-flow `pr-review` skill. On the pull request you get:
 
-- One summary comment with the head commit, the coverage, the counts by kind, the findings dropped by the provenance check, and findings outside the diff. A later review updates the same comment.
-- One review with event `COMMENT` that holds an inline comment for each new finding on a changed line. Findings a later review no longer reports are minimized as outdated.
+- One summary comment that opens with the scoreboard, such as `🔴 1 · 🟡 2 · 🟢 0 — blocking issues to fix before merge.`, then says whether the change solves its requirement (yes, partly, no) and lists the acceptance criteria not covered, the findings outside the diff, and any possible prompt injection. A table at the end has the coverage, the head commit, the counts by kind, the findings dropped by the provenance check, and the lenses used. A later review updates the same comment.
+- One review with event `COMMENT` that holds an inline comment for each new finding on a changed line. Each comment opens with its light and label (🔴 `issue (blocking)`, 🟡 `suggestion`, 🟢 `nitpick` or `note`), a headline, and the lens, then the failure scenario, the fix, and, when the fix is a few lines of the diff, a suggestion the author applies with one click. Findings a later review no longer reports are minimized as outdated.
+
+🔴 marks what a user, a customer, or the next developer would run into: wrong or lost data, a security hole, an unmet acceptance criterion, a broken screen or file, failure at production volume, behavior no test covers, or leftovers of the change. The review never blocks the merge; the light tells the author what to fix first. The scoreboard says "good to merge" only when nothing is 🔴, the change solves its requirement, the coverage is complete, and no possible prompt injection was found.
 
 If the pull request receives new commits before the findings are published, the summary says superseded and no finding is posted. Comment `@integricode review` to review the new head.
+
+## Prompt Injection
+
+The diff, the changed files, and the requirement, Jira comments included, can carry text meant to steer an AI reviewer, such as "ignore previous instructions" in a code comment. Integricode treats all of it as data:
+
+- The pull request's title, description, branch name, and commit messages never reach the model; they only link the requirement.
+- The requirement, the diff, and the changed files reach the model inside blocks whose tags end with a random value of that run, so text in them cannot close its block and pose as instructions. Files the model reads with its tools come back as plain tool results, which its instructions also treat as data.
+- The model has only read-only tools over the checkout, no network, and no secret but its own key; everything it writes is escaped before publishing, and a suggestion can only replace diff lines next to its finding.
+- Outside the model, Integricode scans the lines the pull request adds (the whole file when it reaches the model without its patch, except a rename or copy that adds no line) and the requirement for phrases addressed to AI reviewers. Each hit appears in the summary under "Possible prompt injection" with its location, and the scoreboard then never says "good to merge". Check those lines and the findings by hand.
 
 ## Pull Requests from Forks
 
