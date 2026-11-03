@@ -29,7 +29,8 @@ public sealed record ValidationOutcome(IReadOnlyList<Finding> Findings, IReadOnl
 /// <param name="diff">The pull request's diff map.</param>
 /// <param name="requirementText">The requirement text read, or null when none was.</param>
 /// <param name="headLineCount">The number of lines of a pull-request file at the head SHA, or null when it does not exist.</param>
-public sealed class FindingValidator(DiffMap diff, string? requirementText, Func<string, int?> headLineCount)
+/// <param name="headLine">The text of a line of a pull-request file at the head SHA, or null when it has none.</param>
+public sealed class FindingValidator(DiffMap diff, string? requirementText, Func<string, int?> headLineCount, Func<string, int, string?>? headLine = null)
 {
     /// <summary>A shorter quote, such as "the", is found in any requirement and proves nothing about where it came from.</summary>
     public const int MinQuoteLength = 12;
@@ -140,9 +141,11 @@ public sealed class FindingValidator(DiffMap diff, string? requirementText, Func
             return null;
         }
 
-        // In Markdown a fence can be the very text the suggestion replaces, so only a markdown-tagged wrapper goes there.
+        // In Markdown a fence can be the very text the suggestion replaces: a markdown-tagged wrapper is removed only when
+        // the replaced lines do not open with a fence themselves.
         var suggestion = candidate.Suggestion.Replace("\r\n", "\n", StringComparison.Ordinal);
-        var code = (IsMarkdown(path) && !IsMarkdownWrapper(suggestion) ? suggestion : WithoutFence(suggestion)).TrimEnd('\n');
+        var keepsFence = IsMarkdown(path) && (!IsMarkdownWrapper(suggestion) || IsFence(headLine?.Invoke(path, start)));
+        var code = (keepsFence ? suggestion : WithoutFence(suggestion)).TrimEnd('\n');
         return code.Trim().Length == 0 || code.Length > MaxSuggestionLength || code.Split('\n').Length > MaxSuggestionLines
             ? null
             : new SuggestedChange(start, code);
@@ -157,9 +160,12 @@ public sealed class FindingValidator(DiffMap diff, string? requirementText, Func
     {
         var first = code.TrimStart('\n').Split('\n', 2)[0].Trim();
         var ticks = first.Length - first.TrimStart('`').Length;
-        var info = first[ticks..].Trim().Split(' ', 2)[0];
+        var info = first[ticks..].Trim().Split([' ', '\t'], 2)[0];
         return ticks >= 3 && (info.Equals("markdown", StringComparison.OrdinalIgnoreCase) || info.Equals("md", StringComparison.OrdinalIgnoreCase));
     }
+
+    private static bool IsFence(string? line) =>
+        line is not null && (line.TrimStart().StartsWith("```", StringComparison.Ordinal) || line.TrimStart().StartsWith("~~~", StringComparison.Ordinal));
 
     /// <summary>Removes a Markdown code fence the model wrapped the code in, despite the instructions.</summary>
     /// <param name="code">The suggested code with LF line breaks.</param>

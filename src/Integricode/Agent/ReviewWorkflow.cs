@@ -22,8 +22,8 @@ public sealed record ReviewRequest(string Repository, PullRequest PullRequest, I
 /// holding them.
 /// </summary>
 /// <param name="ScannedDiff">
-/// The sent patches, in diff order, with each file whose content was sent without its patch replaced by its whole text
-/// as an added-lines patch.
+/// The sent patches, in diff order, with each file whose content was sent without its patch (except a rename that adds no
+/// line) replaced by its whole text as an added-lines patch.
 /// </param>
 public sealed record ReviewContext(
     ReviewRequest Request,
@@ -155,7 +155,8 @@ public sealed partial class ReviewWorkflow
         var lenses = LensCatalog.Select(request.Files.Select(file => file.Path));
         var sentWithoutPatch = new HashSet<string>(StringComparer.Ordinal);
         var prompt = BuildPrompt(createBoundary(), link, requirementText, missing, request.Files, sentDiff, diffMap, sentWithoutPatch);
-        // A file sent whole without its patch is scanned whole, in its place in the diff, so warnings keep file order.
+        // A file sent whole without its patch, except a rename that adds no line, is scanned whole, in its place in the
+        // diff, so warnings keep file order.
         List<DiffFile> scanned = [.. sentDiff.Select(file => file.Patch is null && sentWithoutPatch.Contains(file.Path) ? WholeFile(file.Path) ?? file : file)];
         return new ReviewContext(request, link, requirementText, missing, diffMap, sentDiff, scanned, lenses, BuildInstructions(language, lenses), prompt);
     }
@@ -256,7 +257,7 @@ public sealed partial class ReviewWorkflow
         var request = context.Request;
         var validation = outcome.Review is null
             ? new ValidationOutcome([], new Dictionary<string, int>())
-            : new FindingValidator(context.DiffMap, context.RequirementText, CountHeadLines).Validate(outcome.Review.Findings);
+            : new FindingValidator(context.DiffMap, context.RequirementText, CountHeadLines, HeadLine).Validate(outcome.Review.Findings);
         var verdict = outcome.Review is null
             ? new VerdictOutcome(null, new Dictionary<string, int>())
             : new VerdictValidator(context.RequirementText).Validate(outcome.Review.RequirementVerdict, validation.Findings);
@@ -299,6 +300,18 @@ public sealed partial class ReviewWorkflow
         });
     }
 
+    private string? HeadLine(string path, int line)
+    {
+        var check = guard.Check(path, applyExclusions: false);
+        if (!check.Allowed || !File.Exists(check.FullPath) || !TextFile.TryRead(check.FullPath, out var text))
+        {
+            return null;
+        }
+
+        var lines = TextFile.SplitLines(text);
+        return line >= 1 && line <= lines.Count ? lines[line - 1] : null;
+    }
+
     private int? CountHeadLines(string path)
     {
         var check = guard.Check(path, applyExclusions: false);
@@ -319,8 +332,8 @@ public sealed partial class ReviewWorkflow
     /// <param name="sentDiff">The patches that may go to the model, in file order.</param>
     /// <param name="diffMap">The pull request's diff map.</param>
     /// <param name="sentWithoutPatch">
-    /// Receives the files whose content the prompt carries without their patch, unless GitHub reports that they add no
-    /// line, as for a rename with no change.
+    /// Receives the files whose content the prompt carries without their patch, except a rename that GitHub reports adds
+    /// no line.
     /// </param>
     /// <returns>The prompt.</returns>
     private string BuildPrompt(
@@ -364,7 +377,7 @@ public sealed partial class ReviewWorkflow
         foreach (var (file, sent) in files.Zip(sentDiff).Where(pair => pair.First.Status != "removed"))
         {
             var content = tools.ReadChangedFile(file.Path);
-            if (content is not null && sent.Patch is null && file.Additions != 0)
+            if (content is not null && sent.Patch is null && !(file.Status == "renamed" && file.Additions == 0))
             {
                 sentWithoutPatch.Add(file.Path);
             }

@@ -116,8 +116,8 @@ public static class LensCatalog
             || extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase)
             || name.Equals("packages.config", StringComparison.OrdinalIgnoreCase)
             || IsRequirementsFile(name, extension)
-            || name.StartsWith("openapi", StringComparison.OrdinalIgnoreCase)
-            || name.StartsWith("swagger", StringComparison.OrdinalIgnoreCase)
+            || name.StartsWith("openapi", StringComparison.OrdinalIgnoreCase) && IsSpecExtension(extension)
+            || name.StartsWith("swagger", StringComparison.OrdinalIgnoreCase) && IsSpecExtension(extension)
             || name.StartsWith("asyncapi", StringComparison.OrdinalIgnoreCase) && IsSpecExtension(extension)
             || name.EndsWith(".schema.json", StringComparison.OrdinalIgnoreCase)
             || IsController(path, name))
@@ -134,10 +134,11 @@ public static class LensCatalog
             || path.StartsWith("Controllers/", StringComparison.OrdinalIgnoreCase)
             || name.EndsWith("Controller.cs", StringComparison.Ordinal));
 
+    // A test folder is test/ or tests/, or a .NET test project such as Shop.Tests, Shop.UnitTests, or Shop.Test.
     private static bool IsUnderTestFolder(string path) =>
         path.Split('/')[..^1].Any(folder => folder.Equals("test", StringComparison.OrdinalIgnoreCase)
             || folder.Equals("tests", StringComparison.OrdinalIgnoreCase)
-            || folder.EndsWith(".Tests", StringComparison.OrdinalIgnoreCase));
+            || folder.Contains('.') && (folder.EndsWith("Tests", StringComparison.OrdinalIgnoreCase) || folder.EndsWith("Test", StringComparison.OrdinalIgnoreCase)));
 
     private static bool IsSpecExtension(string extension) =>
         extension.Equals(".yaml", StringComparison.OrdinalIgnoreCase)
