@@ -1,0 +1,48 @@
+using Integricode.Agent;
+
+namespace Integricode.Tests.Agent;
+
+public class LensCatalogTests
+{
+    public static TheoryData<string[], string[]> Selections() => new()
+    {
+        { ["src/Cart.cs"], [LensCatalog.CSharp, LensCatalog.Security] },
+        { ["web/app.tsx", "web/site.css"], [LensCatalog.React, LensCatalog.Security] },
+        { ["tools/sync.py"], [LensCatalog.Python, LensCatalog.Security] },
+        { [".github/workflows/ci.yml"], [LensCatalog.GitHubActions, LensCatalog.Security] },
+        { ["deploy/Dockerfile.api", "docker-compose.prod.yml"], [LensCatalog.Containers, LensCatalog.Security] },
+        { ["Directory.Packages.props", "api/openapi.yaml"], [LensCatalog.Contracts, LensCatalog.Security] },
+        { ["src/Shop.csproj"], [LensCatalog.CSharp, LensCatalog.Security] },
+        { ["docs/guide.md", "README.md"], [LensCatalog.Docs] },
+        { ["docs/guide.md", "src/Cart.cs"], [LensCatalog.CSharp, LensCatalog.Docs, LensCatalog.Security] },
+        { ["config/settings.json"], [LensCatalog.Security] },
+        { [], [] },
+    };
+
+    [Theory]
+    [MemberData(nameof(Selections))]
+    public void The_files_choose_the_lenses_and_security_covers_every_change_beyond_docs(string[] paths, string[] lenses)
+    {
+        Assert.Equal(lenses, LensCatalog.Select(paths));
+    }
+
+    [Theory]
+    [InlineData(LensCatalog.CSharp)]
+    [InlineData(LensCatalog.Python)]
+    [InlineData(LensCatalog.React)]
+    [InlineData(LensCatalog.GitHubActions)]
+    [InlineData(LensCatalog.Containers)]
+    [InlineData(LensCatalog.Contracts)]
+    [InlineData(LensCatalog.Docs)]
+    [InlineData(LensCatalog.Security)]
+    public void Every_lens_is_embedded_with_a_hunting_list_and_no_step_the_review_cannot_run(string lens)
+    {
+        var text = LensCatalog.Load(lens);
+
+        Assert.StartsWith("# ", text);
+        Assert.Contains("## Typical light", text);
+        Assert.DoesNotContain("<skill>", text);
+        Assert.DoesNotContain("post_review", text);
+        Assert.DoesNotContain("fetch_owasp", text);
+    }
+}

@@ -72,10 +72,10 @@ public sealed class CommentCommandTests : IDisposable
         Assert.Contains($"| Head SHA | `{gitHub.HeadSha}` |", body);
         Assert.Contains("| State | Reviewed, coverage complete |", body);
         Assert.Contains("| Requirement | REQ-001 (from the title) |", body);
-        Assert.Contains("| Findings | 1 requirement mismatch, 1 bug |", body);
+        Assert.Contains("| Findings | 1 requirement mismatch, 1 code finding |", body);
         Assert.Contains("| Dropped by the provenance check | 2 (quote-not-found 2) |", body);
         Assert.Contains("**Findings outside the diff**", body);
-        Assert.Contains("- **Requirement mismatch** at `src/Cart.cs:9`: Discounts ignored", body);
+        Assert.Contains("- 🔴 `issue (blocking)` **Discounts ignored** · _requirement_ — `src/Cart.cs:9`", body);
         Assert.Contains("  > The total applies every discount.", body);
 
         var review = Assert.Single(gitHub.Reviews);
@@ -83,7 +83,7 @@ public sealed class CommentCommandTests : IDisposable
         var inline = Assert.Single(review.Comments);
         Assert.Equal(("src/Cart.cs", 4), (inline.Path!, inline.Line!.Value));
         Assert.StartsWith(CommentTemplates.FindingMarker(InlineBug.Fingerprint), inline.Body);
-        Assert.Contains("**Bug:** Null prices", inline.Body);
+        Assert.Contains("\n🔴 `issue (blocking)` **Null prices** · _bug_\n", inline.Body);
         Assert.Contains("Total(null) throws.", inline.Body);
     }
 
@@ -112,7 +112,7 @@ public sealed class CommentCommandTests : IDisposable
         await PublishAsync(Result(InlineBug, newBug));
 
         Assert.Equal(summaryId, Summary.Id);
-        Assert.Contains("| Findings | 0 requirement mismatches, 2 bugs |", Summary.Body);
+        Assert.Contains("| Findings | 0 requirement mismatches, 2 code findings |", Summary.Body);
         Assert.Equal(2, gitHub.Reviews.Count);
         var second = Assert.Single(gitHub.Reviews[1].Comments);
         Assert.StartsWith(CommentTemplates.FindingMarker(newBug.Fingerprint), second.Body);
@@ -354,7 +354,36 @@ public sealed class CommentCommandTests : IDisposable
         Assert.Contains("| State | Skipped by policy |", Summary.Body);
     }
 
+    [Fact]
+    public async Task Skipping_by_policy_uses_the_language_option_for_the_labels()
+    {
+        var options = CommentOptions.Parse(["--repo", FakeGitHub.Repository, "--pr", "7", "--skipped-by-policy", "fork", "--language", "pt-BR"]);
+
+        await new CommentCommand(gitHub.Client(), new ActionsLog(log)).RunAsync(options, CancellationToken.None);
+
+        Assert.Contains("| Estado | Ignorado pela política |", Summary.Body);
+    }
+
+    [Fact]
+    public async Task A_suggestion_over_several_lines_anchors_the_comment_on_its_range_and_one_line_does_not()
+    {
+        var range = InlineBug with { Suggestion = new SuggestedChange(3, "{\n    public decimal Total(decimal[] prices) => prices?.Sum() ?? 0;") };
+        var single = InlineBug with { Title = "Second", Suggestion = new SuggestedChange(4, "    public decimal Total(decimal[] prices) => prices?.Sum() ?? 0;") };
+
+        await PublishAsync(Result(range, single) with { Language = ReviewLanguage.PortugueseBrazil });
+
+        var request = Assert.Single(gitHub.Requests, r => r.Method == HttpMethod.Post && r.Uri.AbsolutePath.EndsWith("/reviews", StringComparison.Ordinal));
+        var comments = JsonNode.Parse(request.Body!)!["comments"]!.AsArray();
+        Assert.Equal(3, comments[0]!["start_line"]!.GetValue<int>());
+        Assert.Equal("RIGHT", comments[0]!["start_side"]!.GetValue<string>());
+        Assert.Null(comments[1]!["start_line"]);
+        Assert.Contains("```suggestion\n{\n    public decimal Total", comments[0]!["body"]!.GetValue<string>());
+        Assert.Contains("<sub>Integricode em ", comments[1]!["body"]!.GetValue<string>());
+        Assert.Contains("| Estado | Revisado, cobertura completa |", Summary.Body);
+    }
+
     [Theory]
+    [InlineData("--repo", "octo/shop", "--pr", "7", "--language", "es")]
     [InlineData("--repo", "octo/shop", "--pr", "7", "--skipped-by-policy", "draft")]
     [InlineData("--repo", "octo/shop", "--pr", "7", "--skipped-by-policy")]
     [InlineData("--repo", "octo/shop", "--pr", "7", "--unknown", "x")]

@@ -24,14 +24,15 @@ public sealed partial record ReviewOptions(
     long MaxContextChars,
     int MaxToolCalls,
     Uri? JiraBaseUrl = null,
-    string? JiraAcceptanceCriteriaField = null)
+    string? JiraAcceptanceCriteriaField = null,
+    string Language = ReviewLanguage.English)
 {
     public const string DefaultRequirementsFile = "docs/requirements.md";
 
     private static readonly IReadOnlySet<string> Allowed = new HashSet<string>(StringComparer.Ordinal)
     {
         "repo", "pr", "workspace", "out", "model-provider", "model", "model-endpoint", "requirements-file",
-        "exclude", "max-context-chars", "max-tool-calls", "jira-base-url", "jira-acceptance-criteria-field",
+        "exclude", "max-context-chars", "max-tool-calls", "jira-base-url", "jira-acceptance-criteria-field", "language",
     };
 
     /// <exception cref="UsageException">An option is missing or invalid.</exception>
@@ -51,8 +52,17 @@ public sealed partial record ReviewOptions(
             commandLine.Number("max-context-chars", ContextBudget.DefaultMaxCharacters, minimum: 0),
             (int)commandLine.Number("max-tool-calls", ContextBudget.DefaultMaxToolCalls, minimum: 0, maximum: int.MaxValue),
             JiraSite(commandLine.Optional("jira-base-url")),
-            JiraField(commandLine.Optional("jira-acceptance-criteria-field")));
+            JiraField(commandLine.Optional("jira-acceptance-criteria-field")),
+            ParseLanguage(commandLine.Optional("language")));
     }
+
+    /// <summary>The supported language an option names, or English when it is not set.</summary>
+    /// <param name="text">The option's value, or null.</param>
+    /// <returns>The language name as <see cref="ReviewLanguage"/> spells it.</returns>
+    /// <exception cref="UsageException">The value is not a supported language.</exception>
+    internal static string ParseLanguage(string? text) => text is null
+        ? ReviewLanguage.English
+        : ReviewLanguage.Find(text) ?? throw new UsageException($"Option --language must be one of {string.Join(", ", ReviewLanguage.All)}.");
 
     // The site receives the Jira credentials, so only an https origin is accepted.
     private static Uri? JiraSite(string? text) => text is null ? null
@@ -129,6 +139,7 @@ public sealed class ReviewCommand(
                 HeadSha = pullRequest.HeadSha,
                 Requirement = RequirementIdentifier.Identify(pullRequest.Title, pullRequest.HeadRef, pullRequest.Body),
                 Coverage = Coverage.Failed(ProviderConfigurationError),
+                Language = options.Language,
             };
         }
 
@@ -141,7 +152,7 @@ public sealed class ReviewCommand(
                 sources.Add(jira);
             }
 
-            var workflow = new ReviewWorkflow(chatClient, guard, new ContextBudget(options.MaxToolCalls, options.MaxContextChars), new RequirementSources(sources));
+            var workflow = new ReviewWorkflow(chatClient, guard, new ContextBudget(options.MaxToolCalls, options.MaxContextChars), new RequirementSources(sources), options.Language);
             return await workflow.RunAsync(new ReviewRequest(options.Repository, pullRequest, files), cancellationToken);
         }
     }
@@ -161,6 +172,11 @@ public sealed class ReviewCommand(
         var bugs = result.Findings.Count(f => f.Kind == FindingKind.Bug);
         var dropped = string.Join(", ", result.Dropped.Select(pair => $"{pair.Key} {pair.Value.ToString(CultureInfo.InvariantCulture)}"));
         log.Info($"Findings: {mismatches} requirement mismatches, {bugs} bugs; dropped {result.DroppedCount}{(dropped.Length > 0 ? $" ({dropped})" : string.Empty)}.");
+        log.Info($"Severity: {string.Join(", ", Enum.GetValues<FindingSeverity>().Select(severity => $"{Name(severity)} {result.Findings.Count(f => f.Severity == severity)}"))}; verdict: {(result.Verdict is { } verdict ? Name(verdict.Answer) : "none")}; lenses: {(result.Lenses.Count > 0 ? string.Join(", ", result.Lenses) : "none")}.");
+        foreach (var warning in result.InjectionWarnings)
+        {
+            log.Warning($"Possible prompt injection in the {warning.Source}{(warning.Path is null ? string.Empty : $" at {warning.Path}:{warning.Line}")}.");
+        }
         log.Info($"Context hash: {result.ContextHash ?? "none"}.");
         log.Info($"Usage: {result.Usage.InputTokens} input tokens, {result.Usage.OutputTokens} output tokens, {result.Usage.ToolCalls} tool calls, {result.Usage.CharactersRead} characters read.");
     }
