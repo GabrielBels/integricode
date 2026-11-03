@@ -18,6 +18,8 @@ public class LensCatalogTests
         { ["Pipfile", "tools/types.pyi"], [LensCatalog.Python, LensCatalog.Contracts, LensCatalog.Security] },
         { ["requirements-dev.txt"], [LensCatalog.Python, LensCatalog.Contracts, LensCatalog.Security] },
         { [".dockerignore", "api.dockerfile"], [LensCatalog.Containers, LensCatalog.Security] },
+        { ["events/asyncapi.yaml", "schemas/order.schema.json"], [LensCatalog.Contracts, LensCatalog.Security] },
+        { ["src/Api/Controllers/OrdersController.cs"], [LensCatalog.CSharp, LensCatalog.Contracts, LensCatalog.Security] },
         { ["docs/guide.md", "README.md"], [LensCatalog.Docs] },
         { ["docs/guide.md", "src/Cart.cs"], [LensCatalog.CSharp, LensCatalog.Docs, LensCatalog.Security] },
         { ["config/settings.json"], [LensCatalog.Security] },

@@ -51,7 +51,7 @@ Applies to: PRs changing a published API contract (OpenAPI/Swagger, `.proto`, Gr
 ## Don't flag
 - Additive, optional fields/endpoints in internal API w/ single consumer this PR updates (confirm by grep, say so).
 - Internal endpoints w/o published spec & consumer outside PR (still check same-repo callers).
-- Patch/minor Dependabot/Renovate bumps w/ green CI & no lockfile anomalies; release notes only for serializer, ORM, auth, crypto packages or skipped majors.
+- Patch/minor dependency bumps with no lockfile anomalies in the diff; name release-note risk only for serializer, ORM, auth, crypto packages or skipped majors, as a manual check.
 - Lockfile churn within bumped package's own transitive closure; deliberate npm upgrade flipping `lockfileVersion` (FYI).
 - Dev-only dependency bumps (lint, format, test runners) unless they change CI toolchain.
 - Missing changelog/semver entry when repo keeps none; generated-file size; spec formatting.

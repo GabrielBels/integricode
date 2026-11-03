@@ -206,8 +206,8 @@ public static partial class CommentTemplates
         var yellow = result.Findings.Count(f => f.Severity == FindingSeverity.Suggestion);
         var green = result.Findings.Count - red - yellow;
         var verdict = red > 0 ? labels.VerdictBlocking
-            : result.Verdict?.Answer is VerdictAnswer.No or VerdictAnswer.Partly ? labels.VerdictRequirementUnmet
             : result.InjectionWarnings.Count > 0 ? labels.VerdictInjection
+            : result.Verdict?.Answer is VerdictAnswer.No or VerdictAnswer.Partly ? labels.VerdictRequirementUnmet
             : result.Coverage.State == CoverageState.Incomplete ? labels.VerdictIncomplete
             : result.Requirement is not null && result.Verdict is null ? labels.VerdictUnjudged
             : yellow > 0 ? labels.VerdictYellow
@@ -467,7 +467,7 @@ public static partial class CommentTemplates
         {
             Title = "Integricode review",
             VerdictBlocking = "blocking issues to fix before merge.",
-            VerdictRequirementUnmet = "no blocking finding, but the change does not fully solve the requirement.",
+            VerdictRequirementUnmet = "no blockers found, but the change does not fully solve the requirement.",
             VerdictInjection = "no blockers found, but the input has text that may be a prompt injection; check it by hand.",
             VerdictIncomplete = "no blockers found, but the coverage is incomplete.",
             VerdictUnjudged = "no blockers found, but the review gave no verdict on the requirement.",
@@ -516,7 +516,7 @@ public static partial class CommentTemplates
         {
             Title = "Revisão do Integricode",
             VerdictBlocking = "há bloqueios para corrigir antes do merge.",
-            VerdictRequirementUnmet = "nenhum achado bloqueante, mas a mudança não resolve o requisito por completo.",
+            VerdictRequirementUnmet = "nenhum bloqueio encontrado, mas a mudança não resolve o requisito por completo.",
             VerdictInjection = "nenhum bloqueio encontrado, mas a entrada tem texto que pode ser prompt injection; confira à mão.",
             VerdictIncomplete = "nenhum bloqueio encontrado, mas a cobertura está incompleta.",
             VerdictUnjudged = "nenhum bloqueio encontrado, mas a revisão não deu veredito sobre o requisito.",

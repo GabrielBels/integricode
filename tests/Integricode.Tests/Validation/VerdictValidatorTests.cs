@@ -77,6 +77,15 @@ public class VerdictValidatorTests
     }
 
     [Fact]
+    public void A_yes_with_a_row_dropped_for_a_missing_field_becomes_partly()
+    {
+        var outcome = Validate(new ProposedVerdict("yes", "All good.", [Row(), Row("The total applies every discount.", evidence: "")]));
+
+        Assert.Equal(VerdictAnswer.Partly, outcome.Verdict!.Answer);
+        Assert.Equal(new Dictionary<string, int> { [DropReason.CriterionMissingField] = 1 }, outcome.Dropped);
+    }
+
+    [Fact]
     public void A_no_stays_no_whatever_the_rows_say()
     {
         Assert.Equal(VerdictAnswer.No, Validate(new ProposedVerdict("no", "Nothing works.", [Row()])).Verdict!.Answer);

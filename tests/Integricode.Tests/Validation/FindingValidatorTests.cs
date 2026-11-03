@@ -175,6 +175,16 @@ public class FindingValidatorTests
         Assert.Equal("```bash\nnpm ci\n```", finding.Suggestion!.Code);
     }
 
+    [Theory]
+    [InlineData("```markdown\nRun `npm ci` first.\n```")]
+    [InlineData("```md\nRun `npm ci` first.\n```")]
+    public void A_markdown_tagged_wrapper_around_a_markdown_suggestion_is_removed(string suggestion)
+    {
+        var finding = Assert.Single(Validator().Validate([Bug(path: "README.md", line: 3) with { SuggestionStartLine = 3, Suggestion = suggestion }]).Findings);
+
+        Assert.Equal("Run `npm ci` first.", finding.Suggestion!.Code);
+    }
+
     public static TheoryData<int?, string> UnpublishableSuggestions() => new()
     {
         { 2, "a\nb\nc" },

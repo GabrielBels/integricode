@@ -140,9 +140,9 @@ public sealed class FindingValidator(DiffMap diff, string? requirementText, Func
             return null;
         }
 
-        // In Markdown a fence can be the very text the suggestion replaces, so it is kept as written there.
+        // In Markdown a fence can be the very text the suggestion replaces, so only a markdown-tagged wrapper goes there.
         var suggestion = candidate.Suggestion.Replace("\r\n", "\n", StringComparison.Ordinal);
-        var code = (IsMarkdown(path) ? suggestion : WithoutFence(suggestion)).TrimEnd('\n');
+        var code = (IsMarkdown(path) && !IsMarkdownWrapper(suggestion) ? suggestion : WithoutFence(suggestion)).TrimEnd('\n');
         return code.Trim().Length == 0 || code.Length > MaxSuggestionLength || code.Split('\n').Length > MaxSuggestionLines
             ? null
             : new SuggestedChange(start, code);
@@ -150,6 +150,13 @@ public sealed class FindingValidator(DiffMap diff, string? requirementText, Func
 
     private static bool IsMarkdown(string path) =>
         path.EndsWith(".md", StringComparison.OrdinalIgnoreCase) || path.EndsWith(".mdx", StringComparison.OrdinalIgnoreCase);
+
+    // A fence tagged markdown or md around the whole suggestion wraps prose; a fence with another tag is content.
+    private static bool IsMarkdownWrapper(string code)
+    {
+        var first = code.TrimStart('\n').Split('\n', 2)[0].Trim();
+        return first.Equals("```markdown", StringComparison.OrdinalIgnoreCase) || first.Equals("```md", StringComparison.OrdinalIgnoreCase);
+    }
 
     /// <summary>Removes a Markdown code fence the model wrapped the code in, despite the instructions.</summary>
     /// <param name="code">The suggested code with LF line breaks.</param>

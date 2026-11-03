@@ -2,7 +2,7 @@
 
 ## Overview
 
-The review core (REQ-001), the Jira Cloud source (REQ-002), and the GitHub Action workflows (REQ-003) are built. The [design doc](plans/2026-10-30-pull-request-review-action-design.md) holds the detail. Integricode is a .NET 10 command-line tool (`integricode`) run by a reusable GitHub Actions workflow in two jobs: `review`, which reads and reviews, and `comment`, which publishes. Business rules live in the tool: requirement identification, provenance validation, and comment templates.
+The review core (REQ-001), the Jira Cloud source (REQ-002), the GitHub Action workflows (REQ-003), and the pr-review format with its prompt-injection guardrails (REQ-004) are built. The [design doc](plans/2026-10-30-pull-request-review-action-design.md) holds the detail. Integricode is a .NET 10 command-line tool (`integricode`) run by a reusable GitHub Actions workflow in two jobs: `review`, which reads and reviews, and `comment`, which publishes. Business rules live in the tool: requirement identification, provenance validation, and comment templates.
 
 ## System Context
 

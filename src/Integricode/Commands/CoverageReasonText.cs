@@ -24,6 +24,7 @@ public static class CoverageReasonText
         (Pattern(@"context budget reached \((\d+) characters\)"), "orçamento de contexto atingido ($1 caracteres)"),
         (Pattern(@"model provider error \((.+)\)"), "erro do provedor do modelo ($1)"),
         (Pattern(@"requirements file (.+) not found at the head SHA"), "arquivo de requisitos $1 não encontrado no head SHA"),
+        (Pattern(@"requirements file (.+) refused: (.+)"), "arquivo de requisitos $1 recusado: $2"),
         (Pattern(@"(\S+) not found in (.+)"), "$1 não encontrado em $2"),
         (Pattern(@"Jira issue (\S+) unreadable: authentication failed \(HTTP 401\), check (\S+) and (\S+)"), "issue do Jira $1 ilegível: falha de autenticação (HTTP 401), confira $2 e $3"),
         (Pattern(@"Jira issue (\S+) unreadable: access denied \(HTTP 403\) for the Jira account"), "issue do Jira $1 ilegível: acesso negado (HTTP 403) para a conta do Jira"),

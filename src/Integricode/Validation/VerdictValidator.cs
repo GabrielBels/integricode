@@ -6,9 +6,9 @@ public sealed record VerdictOutcome(RequirementVerdict? Verdict, IReadOnlyDictio
 
 /// <summary>
 /// The provenance check of the requirement verdict: keeps a criterion row only when its fields are present and its
-/// quote is verbatim requirement text, like a mismatch quote. A yes needs evidence: with no kept row, with a row dropped
-/// for an unverifiable quote, or with a kept row or a blocking requirement mismatch that contradicts it, it becomes
-/// partly, so data that talked the model into "yes" cannot publish it.
+/// quote is verbatim requirement text, like a mismatch quote. A yes needs evidence: with no kept row, with any row
+/// dropped, or with a kept row or a blocking requirement mismatch that contradicts it, it becomes partly, so data that
+/// talked the model into "yes" cannot publish it.
 /// </summary>
 /// <param name="requirementText">The requirement text read, or null when none was; without it no verdict is kept.</param>
 public sealed class VerdictValidator(string? requirementText)
@@ -56,7 +56,7 @@ public sealed class VerdictValidator(string? requirementText)
         }
 
         var contradicted = criteria.Count == 0
-            || dropped.ContainsKey(DropReason.CriterionQuoteNotFound)
+            || dropped.Count > 0
             || criteria.Any(row => row.Status != CriterionStatus.Covered)
             || findings.Any(f => f.Kind == FindingKind.RequirementMismatch && f.Severity == FindingSeverity.Blocking);
         var kept = answer == VerdictAnswer.Yes && contradicted ? VerdictAnswer.Partly : answer.Value;

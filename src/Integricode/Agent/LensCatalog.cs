@@ -33,7 +33,11 @@ public static class LensCatalog
 
     private static readonly HashSet<string> NodeManifests = new(StringComparer.OrdinalIgnoreCase) { "package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml" };
 
-    /// <summary>The lenses the pull request's files call for, in a fixed order; each follows its lens's "Applies to" line.</summary>
+    /// <summary>
+    /// The lenses the pull request's files call for, in a fixed order; each follows the file patterns of its lens's
+    /// "Applies to" line. Code that only touches a documented surface does not select the docs lens, since a path cannot
+    /// show that.
+    /// </summary>
     /// <param name="paths">The pull request's file paths, removed files included.</param>
     /// <returns>The lens names; empty when there are no files.</returns>
     public static IReadOnlyList<string> Select(IEnumerable<string> paths)
@@ -113,11 +117,20 @@ public static class LensCatalog
             || name.Equals("packages.config", StringComparison.OrdinalIgnoreCase)
             || IsRequirementsFile(name, extension)
             || name.StartsWith("openapi", StringComparison.OrdinalIgnoreCase)
-            || name.StartsWith("swagger", StringComparison.OrdinalIgnoreCase))
+            || name.StartsWith("swagger", StringComparison.OrdinalIgnoreCase)
+            || name.StartsWith("asyncapi", StringComparison.OrdinalIgnoreCase)
+            || name.EndsWith(".schema.json", StringComparison.OrdinalIgnoreCase)
+            || IsController(path, name))
         {
             yield return Contracts;
         }
     }
+
+    // Controllers back a code-first API contract, so a route or DTO change there gets the contract checks.
+    private static bool IsController(string path, string name) =>
+        path.Contains("/Controllers/", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith("Controllers/", StringComparison.OrdinalIgnoreCase)
+        || name.EndsWith("Controller.cs", StringComparison.Ordinal);
 
     private static bool IsRequirementsFile(string name, string extension) =>
         name.StartsWith("requirements", StringComparison.OrdinalIgnoreCase) && extension.Equals(".txt", StringComparison.OrdinalIgnoreCase);

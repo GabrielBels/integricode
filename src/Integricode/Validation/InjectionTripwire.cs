@@ -15,8 +15,11 @@ public static partial class InjectionTripwire
 
     /// <summary>Finds the lines that read like instructions to an AI reviewer.</summary>
     /// <param name="requirementText">The requirement text sent to the model, or null.</param>
-    /// <param name="sentDiff">The patches sent to the model; null patches were not sent and are skipped.</param>
-    /// <returns>At most <see cref="MaxWarnings"/> warnings, requirement first, then the diff in file order.</returns>
+    /// <param name="sentDiff">
+    /// The patches to scan, in diff order: those sent to the model, and whole files sent without their patch; null
+    /// patches were not sent and are skipped.
+    /// </param>
+    /// <returns>At most <see cref="MaxWarnings"/> warnings, requirement first, then the files in diff order.</returns>
     public static IReadOnlyList<InjectionWarning> Scan(string? requirementText, IReadOnlyList<DiffFile> sentDiff)
     {
         ArgumentNullException.ThrowIfNull(sentDiff);
