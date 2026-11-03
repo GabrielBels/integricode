@@ -6,7 +6,7 @@ namespace Integricode.Validation;
 
 /// <summary>
 /// Scans the requirement, the lines the diff adds, and the whole text of files sent to the model without their patch
-/// (except a rename that adds no line) for phrases that address an AI reviewer, in English and Portuguese. It runs outside the model, so a review the data
+/// (except a rename or copy that adds no line) for phrases that address an AI reviewer, in English and Portuguese. It runs outside the model, so a review the data
 /// talked into silence still warns; the phrases are few and specific, because a hit only adds a warning to the summary.
 /// </summary>
 public static partial class InjectionTripwire
@@ -17,7 +17,7 @@ public static partial class InjectionTripwire
     /// <param name="requirementText">The requirement text sent to the model, or null.</param>
     /// <param name="sentDiff">
     /// The patches to scan, in diff order: those sent to the model, and whole files sent without their patch (except a
-    /// rename that adds no line); null patches were not sent and are skipped.
+    /// rename or copy that adds no line); null patches were not sent and are skipped.
     /// </param>
     /// <returns>At most <see cref="MaxWarnings"/> warnings, requirement first, then the files in diff order.</returns>
     public static IReadOnlyList<InjectionWarning> Scan(string? requirementText, IReadOnlyList<DiffFile> sentDiff)

@@ -141,10 +141,10 @@ public sealed class FindingValidator(DiffMap diff, string? requirementText, Func
             return null;
         }
 
-        // In Markdown a fence can be the very text the suggestion replaces: a markdown-tagged wrapper is removed only when
-        // the replaced lines do not open with a fence themselves.
+        // In Markdown a fence can be the very text the suggestion replaces: a markdown-tagged wrapper is kept only when the
+        // replaced lines open with a markdown-tagged fence themselves, as when the fix lengthens that fence.
         var suggestion = candidate.Suggestion.Replace("\r\n", "\n", StringComparison.Ordinal);
-        var keepsFence = IsMarkdown(path) && (!IsMarkdownWrapper(suggestion) || IsFence(headLine?.Invoke(path, start)));
+        var keepsFence = IsMarkdown(path) && (!IsMarkdownWrapper(suggestion) || IsMarkdownWrapper(headLine?.Invoke(path, start) ?? string.Empty));
         var code = (keepsFence ? suggestion : WithoutFence(suggestion)).TrimEnd('\n');
         return code.Trim().Length == 0 || code.Length > MaxSuggestionLength || code.Split('\n').Length > MaxSuggestionLines
             ? null
@@ -163,9 +163,6 @@ public sealed class FindingValidator(DiffMap diff, string? requirementText, Func
         var info = first[ticks..].Trim().Split([' ', '\t'], 2)[0];
         return ticks >= 3 && (info.Equals("markdown", StringComparison.OrdinalIgnoreCase) || info.Equals("md", StringComparison.OrdinalIgnoreCase));
     }
-
-    private static bool IsFence(string? line) =>
-        line is not null && (line.TrimStart().StartsWith("```", StringComparison.Ordinal) || line.TrimStart().StartsWith("~~~", StringComparison.Ordinal));
 
     /// <summary>Removes a Markdown code fence the model wrapped the code in, despite the instructions.</summary>
     /// <param name="code">The suggested code with LF line breaks.</param>

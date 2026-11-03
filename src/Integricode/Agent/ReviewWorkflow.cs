@@ -22,8 +22,8 @@ public sealed record ReviewRequest(string Repository, PullRequest PullRequest, I
 /// holding them.
 /// </summary>
 /// <param name="ScannedDiff">
-/// The sent patches, in diff order, with each file whose content was sent without its patch (except a rename that adds no
-/// line) replaced by its whole text as an added-lines patch.
+/// The sent patches, in diff order, with each file whose content was sent without its patch (except a rename or copy
+/// that adds no line) replaced by its whole text as an added-lines patch.
 /// </param>
 public sealed record ReviewContext(
     ReviewRequest Request,
@@ -155,7 +155,7 @@ public sealed partial class ReviewWorkflow
         var lenses = LensCatalog.Select(request.Files.Select(file => file.Path));
         var sentWithoutPatch = new HashSet<string>(StringComparer.Ordinal);
         var prompt = BuildPrompt(createBoundary(), link, requirementText, missing, request.Files, sentDiff, diffMap, sentWithoutPatch);
-        // A file sent whole without its patch, except a rename that adds no line, is scanned whole, in its place in the
+        // A file sent whole without its patch, except a rename or copy that adds no line, is scanned whole, in its place in the
         // diff, so warnings keep file order.
         List<DiffFile> scanned = [.. sentDiff.Select(file => file.Patch is null && sentWithoutPatch.Contains(file.Path) ? WholeFile(file.Path) ?? file : file)];
         return new ReviewContext(request, link, requirementText, missing, diffMap, sentDiff, scanned, lenses, BuildInstructions(language, lenses), prompt);
@@ -332,8 +332,8 @@ public sealed partial class ReviewWorkflow
     /// <param name="sentDiff">The patches that may go to the model, in file order.</param>
     /// <param name="diffMap">The pull request's diff map.</param>
     /// <param name="sentWithoutPatch">
-    /// Receives the files whose content the prompt carries without their patch, except a rename that GitHub reports adds
-    /// no line.
+    /// Receives the files whose content the prompt carries without their patch, except a rename or copy that GitHub
+    /// reports adds no line.
     /// </param>
     /// <returns>The prompt.</returns>
     private string BuildPrompt(
@@ -377,7 +377,7 @@ public sealed partial class ReviewWorkflow
         foreach (var (file, sent) in files.Zip(sentDiff).Where(pair => pair.First.Status != "removed"))
         {
             var content = tools.ReadChangedFile(file.Path);
-            if (content is not null && sent.Patch is null && !(file.Status == "renamed" && file.Additions == 0))
+            if (content is not null && sent.Patch is null && !(file.Status is "renamed" or "copied" && file.Additions == 0))
             {
                 sentWithoutPatch.Add(file.Path);
             }

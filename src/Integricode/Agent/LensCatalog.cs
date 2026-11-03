@@ -134,11 +134,12 @@ public static class LensCatalog
             || path.StartsWith("Controllers/", StringComparison.OrdinalIgnoreCase)
             || name.EndsWith("Controller.cs", StringComparison.Ordinal));
 
-    // A test folder is test/ or tests/, or a .NET test project such as Shop.Tests, Shop.UnitTests, or Shop.Test.
+    // A test folder is test/ or tests/, or a .NET test project such as Shop.Tests, Shop.UnitTests, or Shop.Test; the
+    // suffix is case-sensitive, so Shop.Latest or Acme.Contests stay ordinary projects.
     private static bool IsUnderTestFolder(string path) =>
         path.Split('/')[..^1].Any(folder => folder.Equals("test", StringComparison.OrdinalIgnoreCase)
             || folder.Equals("tests", StringComparison.OrdinalIgnoreCase)
-            || folder.Contains('.') && (folder.EndsWith("Tests", StringComparison.OrdinalIgnoreCase) || folder.EndsWith("Test", StringComparison.OrdinalIgnoreCase)));
+            || folder.Contains('.') && (folder.EndsWith("Tests", StringComparison.Ordinal) || folder.EndsWith("Test", StringComparison.Ordinal)));
 
     private static bool IsSpecExtension(string extension) =>
         extension.Equals(".yaml", StringComparison.OrdinalIgnoreCase)

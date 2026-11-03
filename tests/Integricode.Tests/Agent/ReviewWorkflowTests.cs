@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json.Nodes;
 using Integricode.Agent;
 using Integricode.Domain;
 using Integricode.GitHub;
@@ -314,11 +315,13 @@ public sealed class ReviewWorkflowTests : IDisposable
         Assert.Equal([("src/Big.cs", 2), ("src/Cart.cs", 6)], result.InjectionWarnings.Select(w => (w.Path!, w.Line!.Value)));
     }
 
-    [Fact]
-    public async Task A_rename_that_adds_no_line_is_not_scanned_whole()
+    [Theory]
+    [InlineData("renamed")]
+    [InlineData("copied")]
+    public async Task A_rename_or_copy_that_adds_no_line_is_not_scanned_whole(string status)
     {
         repository.Write("src/Ai/PromptBuilder.cs", "namespace Shop;\n// Builds the system prompt for the assistant.\n");
-        var request = Request() with { Files = [.. Request().Files, new PullRequestFile("src/Ai/PromptBuilder.cs", "renamed", null, Additions: 0)] };
+        var request = Request() with { Files = [.. Request().Files, new PullRequestFile("src/Ai/PromptBuilder.cs", status, null, Additions: 0)] };
         var model = new ScriptedChatClient().ThenText("{\"findings\": []}");
 
         var result = await Workflow(model).RunAsync(request, CancellationToken.None);
@@ -348,6 +351,34 @@ public sealed class ReviewWorkflowTests : IDisposable
         var result = await Workflow(model).RunAsync(request, CancellationToken.None);
 
         Assert.Equal(CoverageState.Complete, result.Coverage.State);
+    }
+
+    [Fact]
+    public async Task A_markdown_suggestion_reads_the_real_head_line_through_a_bom_and_crlf()
+    {
+        const string fix = "````markdown\nExample:\n```bash\nnpm ci\n```\n````";
+        repository.Write("README.md", "\uFEFF```markdown\r\nExample:\r\n```bash\r\nnpm ci\r\n```\r\n```\r\n");
+        var request = Request() with
+        {
+            Files = [new PullRequestFile("README.md", "added", "@@ -0,0 +1,6 @@\n+```markdown\n+Example:\n+```bash\n+npm ci\n+```\n+```")],
+        };
+        var finding = new JsonObject
+        {
+            ["severity"] = "suggestion",
+            ["lens"] = "docs",
+            ["kind"] = "bug",
+            ["title"] = "The inner fence closes the example early",
+            ["path"] = "README.md",
+            ["line"] = 6,
+            ["failureScenario"] = "The bash block ends the markdown example.",
+            ["suggestionStartLine"] = 1,
+            ["suggestion"] = fix,
+        };
+        var model = new ScriptedChatClient().ThenText(new JsonObject { ["findings"] = new JsonArray(finding) }.ToJsonString());
+
+        var result = await Workflow(model).RunAsync(request, CancellationToken.None);
+
+        Assert.Equal(fix, Assert.Single(result.Findings).Suggestion!.Code);
     }
 
     private static int Occurrences(string text, string value)

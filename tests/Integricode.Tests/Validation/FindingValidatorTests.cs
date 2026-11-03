@@ -14,12 +14,17 @@ public class FindingValidatorTests
         new PullRequestFile("src/Cart.cs", "modified", "@@ -3,2 +3,3 @@\n context\n+added\n+added2\n"),
         new PullRequestFile("src/Removed.cs", "removed", "@@ -1 +0,0 @@\n-gone"),
         new PullRequestFile("README.md", "modified", "@@ -1,4 +1,4 @@\n+```bash\n+npm install\n+```\n+Run the tests."),
+        new PullRequestFile("GUIDE.md", "modified", "@@ -1,4 +1,4 @@\n+```markdown\n+Example:\n+```bash\n+npm install"),
     ]);
 
-    private static readonly string[] ReadmeLines = ["```bash", "npm install", "```", "Run the tests."];
+    private static readonly Dictionary<string, string[]> HeadLines = new()
+    {
+        ["README.md"] = ["```bash", "npm install", "```", "Run the tests."],
+        ["GUIDE.md"] = ["```markdown", "Example:", "```bash", "npm install"],
+    };
 
     private static FindingValidator Validator(string? requirement = Requirement) =>
-        new(Diff, requirement, path => path is "src/Cart.cs" or "README.md" ? 10 : null, (path, line) => path == "README.md" ? ReadmeLines.ElementAtOrDefault(line - 1) : null);
+        new(Diff, requirement, path => path is "src/Cart.cs" or "README.md" or "GUIDE.md" ? 10 : null, (path, line) => HeadLines.GetValueOrDefault(path)?.ElementAtOrDefault(line - 1));
 
     private static ProposedFinding Bug(string? path = "src/Cart.cs", int? line = 4, string? scenario = "Total(null) throws.", string? title = "Null prices") =>
         new("bug", title, path, line, scenario, null, "blocking");
@@ -199,13 +204,21 @@ public class FindingValidatorTests
     }
 
     [Fact]
-    public void A_markdown_fence_that_replaces_a_fenced_block_is_kept_as_content()
+    public void A_markdown_fence_that_lengthens_a_markdown_example_is_kept_as_content()
     {
-        const string fix = "````markdown\n```bash\nnpm ci\n```\n````";
+        const string fix = "````markdown\nExample:\n```bash\nnpm ci\n```\n````";
 
-        var finding = Assert.Single(Validator().Validate([Bug(path: "README.md", line: 3) with { SuggestionStartLine = 1, Suggestion = fix }]).Findings);
+        var finding = Assert.Single(Validator().Validate([Bug(path: "GUIDE.md", line: 4) with { SuggestionStartLine = 1, Suggestion = fix }]).Findings);
 
         Assert.Equal(fix, finding.Suggestion!.Code);
+    }
+
+    [Fact]
+    public void A_markdown_wrapper_around_a_replaced_code_block_is_removed()
+    {
+        var finding = Assert.Single(Validator().Validate([Bug(path: "README.md", line: 3) with { SuggestionStartLine = 1, Suggestion = "````markdown\n```bash\nnpm ci\n```\n````" }]).Findings);
+
+        Assert.Equal("```bash\nnpm ci\n```", finding.Suggestion!.Code);
     }
 
     public static TheoryData<int?, string> UnpublishableSuggestions() => new()

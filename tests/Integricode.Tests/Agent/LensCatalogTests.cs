@@ -30,6 +30,8 @@ public class LensCatalogTests
         { ["src/Shop.UnitTests/Controllers/OrdersControllerTests.cs"], [LensCatalog.CSharp, LensCatalog.Security] },
         { ["src/Shop.Test/Controllers/OrdersControllerTests.cs"], [LensCatalog.CSharp, LensCatalog.Security] },
         { ["src/Contests/Controllers/EntriesController.cs"], [LensCatalog.CSharp, LensCatalog.Contracts, LensCatalog.Security] },
+        { ["src/Shop.Latest/Controllers/OrdersController.cs"], [LensCatalog.CSharp, LensCatalog.Contracts, LensCatalog.Security] },
+        { ["src/Acme.Contests/Controllers/EntriesController.cs"], [LensCatalog.CSharp, LensCatalog.Contracts, LensCatalog.Security] },
         { ["src/OpenApiClient.cs", "src/SwaggerSetup.cs"], [LensCatalog.CSharp, LensCatalog.Security] },
         { ["api/swagger.json"], [LensCatalog.Contracts, LensCatalog.Security] },
         { ["docs/guide.md", "README.md"], [LensCatalog.Docs] },
