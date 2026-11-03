@@ -13,10 +13,11 @@ public class FindingValidatorTests
     [
         new PullRequestFile("src/Cart.cs", "modified", "@@ -3,2 +3,3 @@\n context\n+added\n+added2\n"),
         new PullRequestFile("src/Removed.cs", "removed", "@@ -1 +0,0 @@\n-gone"),
+        new PullRequestFile("README.md", "modified", "@@ -1,3 +1,3 @@\n+```bash\n+npm install\n+```"),
     ]);
 
     private static FindingValidator Validator(string? requirement = Requirement) =>
-        new(Diff, requirement, path => path == "src/Cart.cs" ? 10 : null);
+        new(Diff, requirement, path => path is "src/Cart.cs" or "README.md" ? 10 : null);
 
     private static ProposedFinding Bug(string? path = "src/Cart.cs", int? line = 4, string? scenario = "Total(null) throws.", string? title = "Null prices") =>
         new("bug", title, path, line, scenario, null, "blocking");
@@ -164,6 +165,14 @@ public class FindingValidatorTests
         Assert.Equal(startLine ?? 4, finding.Suggestion!.StartLine);
         Assert.EndsWith("        if (prices is null) return 0;", finding.Suggestion.Code, StringComparison.Ordinal);
         Assert.DoesNotContain("```", finding.Suggestion.Code, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_suggestion_for_markdown_keeps_the_fences_it_replaces()
+    {
+        var finding = Assert.Single(Validator().Validate([Bug(path: "README.md", line: 3) with { SuggestionStartLine = 1, Suggestion = "```bash\nnpm ci\n```" }]).Findings);
+
+        Assert.Equal("```bash\nnpm ci\n```", finding.Suggestion!.Code);
     }
 
     public static TheoryData<int?, string> UnpublishableSuggestions() => new()

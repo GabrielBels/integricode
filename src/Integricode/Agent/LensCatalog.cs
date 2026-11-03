@@ -29,7 +29,11 @@ public static class LensCatalog
         "build.gradle", "build.gradle.kts", "Gemfile", "Gemfile.lock", "composer.json", "composer.lock",
     };
 
-    /// <summary>The lenses the pull request's files call for, in a fixed order.</summary>
+    private static readonly HashSet<string> PythonManifests = new(StringComparer.OrdinalIgnoreCase) { "pyproject.toml", "Pipfile", "Pipfile.lock" };
+
+    private static readonly HashSet<string> NodeManifests = new(StringComparer.OrdinalIgnoreCase) { "package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml" };
+
+    /// <summary>The lenses the pull request's files call for, in a fixed order; each follows its lens's "Applies to" line.</summary>
     /// <param name="paths">The pull request's file paths, removed files included.</param>
     /// <returns>The lens names; empty when there are no files.</returns>
     public static IReadOnlyList<string> Select(IEnumerable<string> paths)
@@ -75,12 +79,15 @@ public static class LensCatalog
             yield return CSharp;
         }
 
-        if (extension.Equals(".py", StringComparison.OrdinalIgnoreCase) || name.Equals("pyproject.toml", StringComparison.OrdinalIgnoreCase))
+        if (extension.Equals(".py", StringComparison.OrdinalIgnoreCase)
+            || extension.Equals(".pyi", StringComparison.OrdinalIgnoreCase)
+            || PythonManifests.Contains(name)
+            || IsRequirementsFile(name, extension))
         {
             yield return Python;
         }
 
-        if (ReactExtensions.Contains(extension))
+        if (ReactExtensions.Contains(extension) || NodeManifests.Contains(name))
         {
             yield return React;
         }
@@ -92,20 +99,28 @@ public static class LensCatalog
 
         if (name.StartsWith("Dockerfile", StringComparison.OrdinalIgnoreCase)
             || name.StartsWith("Containerfile", StringComparison.OrdinalIgnoreCase)
+            || extension.Equals(".dockerfile", StringComparison.OrdinalIgnoreCase)
+            || name.Equals(".dockerignore", StringComparison.OrdinalIgnoreCase)
             || IsComposeFile(name))
         {
             yield return Containers;
         }
 
+        // A .csproj holds its PackageReference versions when the repository has no central package management.
         if (DependencyManifests.Contains(name)
             || ContractExtensions.Contains(extension)
-            || name.StartsWith("requirements", StringComparison.OrdinalIgnoreCase) && extension.Equals(".txt", StringComparison.OrdinalIgnoreCase)
+            || extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase)
+            || name.Equals("packages.config", StringComparison.OrdinalIgnoreCase)
+            || IsRequirementsFile(name, extension)
             || name.StartsWith("openapi", StringComparison.OrdinalIgnoreCase)
             || name.StartsWith("swagger", StringComparison.OrdinalIgnoreCase))
         {
             yield return Contracts;
         }
     }
+
+    private static bool IsRequirementsFile(string name, string extension) =>
+        name.StartsWith("requirements", StringComparison.OrdinalIgnoreCase) && extension.Equals(".txt", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsComposeFile(string name) =>
         (name.StartsWith("compose", StringComparison.OrdinalIgnoreCase) || name.StartsWith("docker-compose", StringComparison.OrdinalIgnoreCase))

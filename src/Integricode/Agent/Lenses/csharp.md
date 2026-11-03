@@ -6,7 +6,7 @@ Applies to: `*.cs`, `*.csproj`, `*.razor`, `*.cshtml` (skip `obj/`, `bin/`, gene
 - `<TargetFramework>`/`<LangVersion>`/`<Nullable>` (`.csproj`, `Directory.Build.props`): newer syntax/BCL (collection expressions, `ThrowIfNull`, `Dictionary.TryAdd`, `string.Contains(string, StringComparison)`, `Split(char)`) may not exist on target: flag code above LangVersion, never suggest blind
 - `.editorconfig`: `none`/`silent` rules, `TreatWarningsAsErrors`; suppressed-rule findings = noise
 - `.claude/rules/domain.md` (or equivalent): format contracts/invariants invisible in code
-- Refactoring PR (all commits `refactor:`/`perf:`): read changed `.cs` whole (old bugs hide outside added lines), report as pre-existing, verify "no behavior change" on whole method
+- Refactoring change (the diff only moves, renames or restructures code): read changed `.cs` whole (old bugs hide outside added lines), report as pre-existing, verify "no behavior change" on whole method
 - Registration/naming/test-setup: read 3-5 unchanged siblings; one example isn't a convention, two+ are
 
 ## Hunt for
@@ -27,7 +27,7 @@ Applies to: `*.cs`, `*.csproj`, `*.razor`, `*.cshtml` (skip `obj/`, `bin/`, gene
 - Comment wrong about runtime behavior (says `null`, tests `Count == 0`): flag; not vague/missing ones
 
 ### Async & concurrency
-- `.Result`, `.Wait()`, `.GetAwaiter().GetResult()` on request/UI path: deadlock under `SynchronizationContext` (classic ASP.NET/System.Web, WinForms/WPF), thread-pool starvation on ASP.NET Core; low priority in `Main`, tests, startup. ehs-v5: also sync ORM/file I/O in new `async` methods
+- `.Result`, `.Wait()`, `.GetAwaiter().GetResult()` on request/UI path: deadlock under `SynchronizationContext` (classic ASP.NET/System.Web, WinForms/WPF), thread-pool starvation on ASP.NET Core; low priority in `Main`, tests, startup; also sync ORM/file I/O in new `async` methods
 - `async void` outside event handler: exception escapes/crashes process; same for async lambda where `Action` expected (`list.ForEach(async x => ...)`, `Parallel.ForEach(..., async ...)`), caller also continues early
 - Un-awaited Task (`SaveAsync(x);`, `_ = DoAsync();`): compiler warns only inside async methods; races response/disposal, exception lost; fire-and-forget on scoped services (`DbContext`, `HttpContext`) -> `ObjectDisposedException`
 - `return task;` not `return await task;` inside `using`/`try/catch`: early dispose, `catch` blind
@@ -38,7 +38,7 @@ Applies to: `*.cs`, `*.csproj`, `*.razor`, `*.cshtml` (skip `obj/`, `bin/`, gene
 - `CancellationToken` accepted, not forwarded (CA2016): work outlives disconnect; only where overload exists and call is long-running
 
 ### Resources & disposal
-- `IDisposable` without `using`/`try-finally` (`SqlConnection`, `SqlCommand`, `SqlDataReader`, `Stream`, `StreamReader`, `HttpResponseMessage`, `CancellationTokenSource`, `Timer`, `Process`; ehs-v5 data layer: adapters, connections, readers): leaks on early return/throw; connections end as "Timeout expired ... max pool size"
+- `IDisposable` without `using`/`try-finally` (`SqlConnection`, `SqlCommand`, `SqlDataReader`, `Stream`, `StreamReader`, `HttpResponseMessage`, `CancellationTokenSource`, `Timer`, `Process`; data-layer adapters, connections, readers): leaks on early return/throw; connections end as "Timeout expired ... max pool size"
 - Use after dispose: `IQueryable`, lazy `IEnumerable`, `DataReader`, `Stream` returned out of its `using`/context
 - `new HttpClient()` per call/iteration: socket exhaustion, stale DNS; use `IHttpClientFactory`/shared instance (disposing a shared client is also a bug)
 - `+=` on long-lived/static publisher without `-=`, undisposed timers, ever-growing static collections/caches: slow leak, app-pool recycle
@@ -46,9 +46,9 @@ Applies to: `*.cs`, `*.csproj`, `*.razor`, `*.cshtml` (skip `obj/`, `bin/`, gene
 - Test infrastructure: `WebApplicationFactory<T>`, `HttpClient`, `TestServer` never disposed (in `new WebApplicationFactory<T>().WithWebHostBuilder(...)` the parent needs disposal too); siblings using `IClassFixture<T>` -> no hand-rolled factories
 
 ### Data access (ADO.NET / EF / any ORM)
-- Query, `FindAsync` or lazy navigation in a loop: 1+N round trips; missing `Include`/prefetch/projection; timeout at prod volume. ehs-v5/LLBLGen: non-prefetched related-entity/collection property = query per access (N+1 in a loop/repeated getter); look for `PrefetchPath` or bulk fetch
+- Query, `FindAsync` or lazy navigation in a loop: 1+N round trips; missing `Include`/prefetch/projection; timeout at prod volume. ORM entity or collection properties loaded on access = query per access (N+1 in a loop/repeated getter); look for a prefetch or bulk fetch
 - Early materialization: `ToList()`/`AsEnumerable()` before `Where`/`Select`/`Count`/`Any`, or `Func<T,bool>` instead of `Expression<Func<T,bool>>`: filter runs in memory over whole table
-- Writes without transaction boundary: dependent `SaveChanges`/commands that must succeed together; `TransactionScope`+`await` without `TransactionScopeAsyncFlowOption.Enabled`; missing `scope.Complete()` (silent rollback); `catch` swallowing error then committing partial work; no rollback on error path. ehs-v5: every atomic entity/query enrolled in same transaction/adapter, every path ends in commit or rollback, transaction disposed
+- Writes without transaction boundary: dependent `SaveChanges`/commands that must succeed together; `TransactionScope`+`await` without `TransactionScopeAsyncFlowOption.Enabled`; missing `scope.Complete()` (silent rollback); `catch` swallowing error then committing partial work; no rollback on error path. Every atomic entity/query enrolled in the same transaction, every path ends in commit or rollback, transaction disposed
 - Read-modify-write without concurrency token (`[Timestamp]`/rowversion, `UPDATE ... WHERE version = @v`): silent lost update
 - `Contains` over huge list, `SaveChanges` in loop, full entities for one column: parameter limit (2100 on SQL Server), round trips, memory; `AsNoTracking` only for large read-only sets
 
@@ -89,7 +89,7 @@ Applies to: `*.cs`, `*.csproj`, `*.razor`, `*.cshtml` (skip `obj/`, `bin/`, gene
 - "Missing null check" that caller, guard clause or nullable annotation covers; open caller first
 - MD5/SHA1 for cache keys, ETags or dedupe; `Random` for jitter or sampling; `AddWithValue` on an already-parameterized query
 - Best-effort cleanup that deliberately swallows (temp-file delete, `Dispose`, logging) with stated intent
-- Convention drift with <2 sibling examples, justified in PR description, or new code clearly better than legacy (🟢 `note` at most)
+- Convention drift with <2 sibling examples, justified in a code comment or doc the change adds, or new code clearly better than legacy (🟢 `note` at most)
 - Vague/incomplete comments; naming and `var` preferences `.editorconfig` doesn't enforce
 
 ## Typical light

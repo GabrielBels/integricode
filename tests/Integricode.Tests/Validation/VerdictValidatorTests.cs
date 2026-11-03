@@ -61,6 +61,22 @@ public class VerdictValidatorTests
     }
 
     [Fact]
+    public void A_yes_without_any_surviving_row_becomes_partly()
+    {
+        Assert.Equal(VerdictAnswer.Partly, Validate(new ProposedVerdict("yes", "All good.", [])).Verdict!.Answer);
+        Assert.Equal(VerdictAnswer.Partly, Validate(new ProposedVerdict("yes", "All good.", [Row("Totals always apply discounts.")])).Verdict!.Answer);
+    }
+
+    [Fact]
+    public void A_yes_with_a_row_dropped_for_an_unverifiable_quote_becomes_partly()
+    {
+        var outcome = Validate(new ProposedVerdict("yes", "All good.", [Row(), Row("The export writes a CSV file.")]));
+
+        Assert.Equal(VerdictAnswer.Partly, outcome.Verdict!.Answer);
+        Assert.Single(outcome.Verdict.Criteria);
+    }
+
+    [Fact]
     public void A_no_stays_no_whatever_the_rows_say()
     {
         Assert.Equal(VerdictAnswer.No, Validate(new ProposedVerdict("no", "Nothing works.", [Row()])).Verdict!.Answer);

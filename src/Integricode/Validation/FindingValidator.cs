@@ -140,11 +140,16 @@ public sealed class FindingValidator(DiffMap diff, string? requirementText, Func
             return null;
         }
 
-        var code = WithoutFence(candidate.Suggestion.Replace("\r\n", "\n", StringComparison.Ordinal)).TrimEnd('\n');
+        // In Markdown a fence can be the very text the suggestion replaces, so it is kept as written there.
+        var suggestion = candidate.Suggestion.Replace("\r\n", "\n", StringComparison.Ordinal);
+        var code = (IsMarkdown(path) ? suggestion : WithoutFence(suggestion)).TrimEnd('\n');
         return code.Trim().Length == 0 || code.Length > MaxSuggestionLength || code.Split('\n').Length > MaxSuggestionLines
             ? null
             : new SuggestedChange(start, code);
     }
+
+    private static bool IsMarkdown(string path) =>
+        path.EndsWith(".md", StringComparison.OrdinalIgnoreCase) || path.EndsWith(".mdx", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Removes a Markdown code fence the model wrapped the code in, despite the instructions.</summary>
     /// <param name="code">The suggested code with LF line breaks.</param>

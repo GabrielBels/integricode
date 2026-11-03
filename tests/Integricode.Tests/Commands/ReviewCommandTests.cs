@@ -197,6 +197,7 @@ public sealed class ReviewCommandTests : IDisposable
         Assert.Contains("Requirement: REQ-001 (from the title).", text);
         Assert.Contains("Coverage: complete.", text);
         Assert.Contains("Findings: 1 requirement mismatches, 1 bugs; dropped 0.", text);
+        Assert.Contains("Severity: blocking 2, suggestion 0, nitpick 0, note 0; verdict: none; lenses: ", text);
         Assert.Contains($"Context hash: {complete!.ContextHash}.", text);
         Assert.Contains("::warning::Coverage failed: model provider error (InvalidOperationException).", text);
         Assert.DoesNotContain(RequirementMarker, text);

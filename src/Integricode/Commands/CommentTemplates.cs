@@ -161,8 +161,10 @@ public static partial class CommentTemplates
 
     private static string EscapeProse(string text) =>
         // Only the HTML-significant characters are escaped, so accented text stays readable in the raw Markdown.
+        // A backslash is escaped first: unescaped before a backtick, it would turn the next code span into prose.
         // A zero-width space after @ keeps the text readable without notifying anyone.
         text
+            .Replace("\\", "\\\\", StringComparison.Ordinal)
             .Replace("&", "&amp;", StringComparison.Ordinal)
             .Replace("<", "&lt;", StringComparison.Ordinal)
             .Replace(">", "&gt;", StringComparison.Ordinal)
@@ -193,15 +195,21 @@ public static partial class CommentTemplates
         _ => "🟢 `note`",
     };
 
-    /// <summary>The counts by light and the verdict on merging, as the first line of the summary and the review.</summary>
+    /// <summary>
+    /// The counts by light and the verdict on merging, as the first line of the summary and the review. It says "good to
+    /// merge" only when nothing blocks, the requirement verdict (when a requirement is linked) is yes, no injection
+    /// warning was raised, and the coverage is complete.
+    /// </summary>
     private static string Scoreboard(ReviewResult result, Labels labels)
     {
         var red = result.Findings.Count(f => f.Severity == FindingSeverity.Blocking);
         var yellow = result.Findings.Count(f => f.Severity == FindingSeverity.Suggestion);
         var green = result.Findings.Count - red - yellow;
         var verdict = red > 0 ? labels.VerdictBlocking
+            : result.Verdict?.Answer is VerdictAnswer.No or VerdictAnswer.Partly ? labels.VerdictRequirementUnmet
             : result.InjectionWarnings.Count > 0 ? labels.VerdictInjection
             : result.Coverage.State == CoverageState.Incomplete ? labels.VerdictIncomplete
+            : result.Requirement is not null && result.Verdict is null ? labels.VerdictUnjudged
             : yellow > 0 ? labels.VerdictYellow
             : green > 0 ? labels.VerdictGreen
             : labels.VerdictClear;
@@ -300,7 +308,7 @@ public static partial class CommentTemplates
         body.Append("**").Append(result.Coverage.State == CoverageState.Incomplete ? labels.Missing : labels.Reason).Append("**\n\n");
         foreach (var reason in result.Coverage.Reasons)
         {
-            body.Append("- ").Append(Sanitize(reason, MaxReasonLength)).Append('\n');
+            body.Append("- ").Append(Sanitize(CoverageReasonText.Localize(reason, result.Language), MaxReasonLength)).Append('\n');
         }
 
         if (result.Coverage.State == CoverageState.Incomplete && result.Requirement is null)
@@ -411,8 +419,10 @@ public static partial class CommentTemplates
     {
         public required string Title { get; init; }
         public required string VerdictBlocking { get; init; }
+        public required string VerdictRequirementUnmet { get; init; }
         public required string VerdictInjection { get; init; }
         public required string VerdictIncomplete { get; init; }
+        public required string VerdictUnjudged { get; init; }
         public required string VerdictYellow { get; init; }
         public required string VerdictGreen { get; init; }
         public required string VerdictClear { get; init; }
@@ -457,8 +467,10 @@ public static partial class CommentTemplates
         {
             Title = "Integricode review",
             VerdictBlocking = "blocking issues to fix before merge.",
+            VerdictRequirementUnmet = "no blocking finding, but the change does not fully solve the requirement.",
             VerdictInjection = "no blockers found, but the input has text that may be a prompt injection; check it by hand.",
             VerdictIncomplete = "no blockers found, but the coverage is incomplete.",
+            VerdictUnjudged = "no blockers found, but the review gave no verdict on the requirement.",
             VerdictYellow = "no blockers — good to merge after a look at the yellow ones.",
             VerdictGreen = "no blockers — good to merge.",
             VerdictClear = "all clear — good to merge.",
@@ -504,8 +516,10 @@ public static partial class CommentTemplates
         {
             Title = "Revisão do Integricode",
             VerdictBlocking = "há bloqueios para corrigir antes do merge.",
+            VerdictRequirementUnmet = "nenhum achado bloqueante, mas a mudança não resolve o requisito por completo.",
             VerdictInjection = "nenhum bloqueio encontrado, mas a entrada tem texto que pode ser prompt injection; confira à mão.",
             VerdictIncomplete = "nenhum bloqueio encontrado, mas a cobertura está incompleta.",
+            VerdictUnjudged = "nenhum bloqueio encontrado, mas a revisão não deu veredito sobre o requisito.",
             VerdictYellow = "sem bloqueios — pode fazer o merge depois de olhar os amarelos.",
             VerdictGreen = "sem bloqueios — pode fazer o merge.",
             VerdictClear = "tudo certo — pode fazer o merge.",
