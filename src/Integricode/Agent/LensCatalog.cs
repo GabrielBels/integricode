@@ -118,7 +118,7 @@ public static class LensCatalog
             || IsRequirementsFile(name, extension)
             || name.StartsWith("openapi", StringComparison.OrdinalIgnoreCase)
             || name.StartsWith("swagger", StringComparison.OrdinalIgnoreCase)
-            || name.StartsWith("asyncapi", StringComparison.OrdinalIgnoreCase)
+            || name.StartsWith("asyncapi", StringComparison.OrdinalIgnoreCase) && IsSpecExtension(extension)
             || name.EndsWith(".schema.json", StringComparison.OrdinalIgnoreCase)
             || IsController(path, name))
         {
@@ -126,11 +126,23 @@ public static class LensCatalog
         }
     }
 
-    // Controllers back a code-first API contract, so a route or DTO change there gets the contract checks.
+    // Controllers back a code-first API contract, so a route or DTO change there gets the contract checks; test code
+    // under a test folder does not publish one.
     private static bool IsController(string path, string name) =>
-        path.Contains("/Controllers/", StringComparison.OrdinalIgnoreCase)
-        || path.StartsWith("Controllers/", StringComparison.OrdinalIgnoreCase)
-        || name.EndsWith("Controller.cs", StringComparison.Ordinal);
+        !IsUnderTestFolder(path)
+        && (path.Contains("/Controllers/", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("Controllers/", StringComparison.OrdinalIgnoreCase)
+            || name.EndsWith("Controller.cs", StringComparison.Ordinal));
+
+    private static bool IsUnderTestFolder(string path) =>
+        path.Split('/')[..^1].Any(folder => folder.Equals("test", StringComparison.OrdinalIgnoreCase)
+            || folder.Equals("tests", StringComparison.OrdinalIgnoreCase)
+            || folder.EndsWith(".Tests", StringComparison.OrdinalIgnoreCase));
+
+    private static bool IsSpecExtension(string extension) =>
+        extension.Equals(".yaml", StringComparison.OrdinalIgnoreCase)
+        || extension.Equals(".yml", StringComparison.OrdinalIgnoreCase)
+        || extension.Equals(".json", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsRequirementsFile(string name, string extension) =>
         name.StartsWith("requirements", StringComparison.OrdinalIgnoreCase) && extension.Equals(".txt", StringComparison.OrdinalIgnoreCase);

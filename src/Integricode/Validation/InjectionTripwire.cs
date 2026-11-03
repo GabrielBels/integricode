@@ -5,9 +5,9 @@ using Integricode.GitHub;
 namespace Integricode.Validation;
 
 /// <summary>
-/// Scans the text the pull request controls (the requirement and the lines the diff adds) for phrases that address an
-/// AI reviewer, in English and Portuguese. It runs outside the model, so a review the data talked into silence still
-/// warns; the phrases are few and specific, because a hit only adds a warning to the summary.
+/// Scans the requirement, the lines the diff adds, and the whole text of files sent to the model without their patch
+/// for phrases that address an AI reviewer, in English and Portuguese. It runs outside the model, so a review the data
+/// talked into silence still warns; the phrases are few and specific, because a hit only adds a warning to the summary.
 /// </summary>
 public static partial class InjectionTripwire
 {

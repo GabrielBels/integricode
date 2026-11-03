@@ -151,11 +151,14 @@ public sealed class FindingValidator(DiffMap diff, string? requirementText, Func
     private static bool IsMarkdown(string path) =>
         path.EndsWith(".md", StringComparison.OrdinalIgnoreCase) || path.EndsWith(".mdx", StringComparison.OrdinalIgnoreCase);
 
-    // A fence tagged markdown or md around the whole suggestion wraps prose; a fence with another tag is content.
+    // A fence of three or more backticks tagged markdown or md around the whole suggestion wraps prose; a fence with
+    // another tag is content.
     private static bool IsMarkdownWrapper(string code)
     {
         var first = code.TrimStart('\n').Split('\n', 2)[0].Trim();
-        return first.Equals("```markdown", StringComparison.OrdinalIgnoreCase) || first.Equals("```md", StringComparison.OrdinalIgnoreCase);
+        var ticks = first.Length - first.TrimStart('`').Length;
+        var info = first[ticks..].Trim().Split(' ', 2)[0];
+        return ticks >= 3 && (info.Equals("markdown", StringComparison.OrdinalIgnoreCase) || info.Equals("md", StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>Removes a Markdown code fence the model wrapped the code in, despite the instructions.</summary>

@@ -52,7 +52,7 @@ public sealed class CoverageReasonTextTests : IDisposable
 
         Assert.Equal("arquivo de requisitos docs/missing.md não encontrado no head SHA", Portuguese(missingFile.UnreadableReason!));
         Assert.Equal("REQ-009 não encontrado em docs/requirements.md", Portuguese(missingEntry.UnreadableReason!));
-        Assert.StartsWith("arquivo de requisitos ../outside.md recusado: ", Portuguese(refused.UnreadableReason!));
+        Assert.Equal("arquivo de requisitos ../outside.md recusado: segmentos de diretório pai não são permitidos", Portuguese(refused.UnreadableReason!));
     }
 
     [Theory]

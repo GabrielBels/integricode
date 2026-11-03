@@ -64,7 +64,7 @@ public sealed partial class GitHubClient
         var files = new List<PullRequestFile>();
         await foreach (var dto in GetPagesAsync<FileDto>(Relative($"repos/{repository}/pulls/{number}/files?per_page=100"), cancellationToken))
         {
-            files.Add(new PullRequestFile(dto.Filename, dto.Status ?? "modified", dto.Patch));
+            files.Add(new PullRequestFile(dto.Filename, dto.Status ?? "modified", dto.Patch, dto.Additions));
         }
 
         return files;
@@ -218,7 +218,7 @@ public sealed partial class GitHubClient
 
     private sealed record RepoDto(string FullName);
 
-    private sealed record FileDto(string Filename, string? Status, string? Patch);
+    private sealed record FileDto(string Filename, string? Status, string? Patch, int? Additions);
 
     private sealed record CommentDto(long Id, string NodeId, string? Body, UserDto? User, string? Path, int? Line);
 

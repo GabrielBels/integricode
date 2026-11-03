@@ -178,11 +178,21 @@ public class FindingValidatorTests
     [Theory]
     [InlineData("```markdown\nRun `npm ci` first.\n```")]
     [InlineData("```md\nRun `npm ci` first.\n```")]
+    [InlineData("``` markdown\nRun `npm ci` first.\n```")]
+    [InlineData("```markdown title=\"x\"\nRun `npm ci` first.\n```")]
     public void A_markdown_tagged_wrapper_around_a_markdown_suggestion_is_removed(string suggestion)
     {
         var finding = Assert.Single(Validator().Validate([Bug(path: "README.md", line: 3) with { SuggestionStartLine = 3, Suggestion = suggestion }]).Findings);
 
         Assert.Equal("Run `npm ci` first.", finding.Suggestion!.Code);
+    }
+
+    [Fact]
+    public void A_longer_markdown_wrapper_keeps_the_code_block_it_holds()
+    {
+        var finding = Assert.Single(Validator().Validate([Bug(path: "README.md", line: 3) with { SuggestionStartLine = 1, Suggestion = "````markdown\nRun:\n```bash\nnpm ci\n```\n````" }]).Findings);
+
+        Assert.Equal("Run:\n```bash\nnpm ci\n```", finding.Suggestion!.Code);
     }
 
     public static TheoryData<int?, string> UnpublishableSuggestions() => new()

@@ -314,6 +314,18 @@ public sealed class ReviewWorkflowTests : IDisposable
         Assert.Equal([("src/Big.cs", 2), ("src/Cart.cs", 6)], result.InjectionWarnings.Select(w => (w.Path!, w.Line!.Value)));
     }
 
+    [Fact]
+    public async Task A_rename_that_adds_no_line_is_not_scanned_whole()
+    {
+        repository.Write("src/Ai/PromptBuilder.cs", "namespace Shop;\n// Builds the system prompt for the assistant.\n");
+        var request = Request() with { Files = [.. Request().Files, new PullRequestFile("src/Ai/PromptBuilder.cs", "renamed", null, Additions: 0)] };
+        var model = new ScriptedChatClient().ThenText("{\"findings\": []}");
+
+        var result = await Workflow(model).RunAsync(request, CancellationToken.None);
+
+        Assert.Empty(result.InjectionWarnings);
+    }
+
     private static int Occurrences(string text, string value)
     {
         var count = 0;

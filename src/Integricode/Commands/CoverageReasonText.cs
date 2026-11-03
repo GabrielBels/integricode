@@ -14,6 +14,17 @@ public static class CoverageReasonText
     /// <summary>The no-link reason without its how-to, which the summary prints right after it.</summary>
     private const string NoLinkEnglish = "no requirement linked";
 
+    private static readonly Regex Refused = Pattern(@"requirements file (.+) refused: (.+)");
+
+    private static readonly Dictionary<string, string> PortugueseRefusals = new(StringComparer.Ordinal)
+    {
+        [PathGuard.AbsoluteRefusal] = "caminhos absolutos não são permitidos",
+        [PathGuard.ParentRefusal] = "segmentos de diretório pai não são permitidos",
+        [PathGuard.OutsideRefusal] = "o caminho sai do checkout",
+        [PathGuard.ExcludedRefusal] = "o caminho está excluído do contexto da revisão",
+        [PathGuard.LinkRefusal] = "um link simbólico sai do checkout",
+    };
+
     private static readonly (Regex Pattern, string Portuguese)[] Portuguese =
     [
         (Exact(ReviewWorkflow.NoLinkReason), "nenhum requisito vinculado"),
@@ -24,7 +35,6 @@ public static class CoverageReasonText
         (Pattern(@"context budget reached \((\d+) characters\)"), "orçamento de contexto atingido ($1 caracteres)"),
         (Pattern(@"model provider error \((.+)\)"), "erro do provedor do modelo ($1)"),
         (Pattern(@"requirements file (.+) not found at the head SHA"), "arquivo de requisitos $1 não encontrado no head SHA"),
-        (Pattern(@"requirements file (.+) refused: (.+)"), "arquivo de requisitos $1 recusado: $2"),
         (Pattern(@"(\S+) not found in (.+)"), "$1 não encontrado em $2"),
         (Pattern(@"Jira issue (\S+) unreadable: authentication failed \(HTTP 401\), check (\S+) and (\S+)"), "issue do Jira $1 ilegível: falha de autenticação (HTTP 401), confira $2 e $3"),
         (Pattern(@"Jira issue (\S+) unreadable: access denied \(HTTP 403\) for the Jira account"), "issue do Jira $1 ilegível: acesso negado (HTTP 403) para a conta do Jira"),
@@ -50,6 +60,13 @@ public static class CoverageReasonText
         if (language != ReviewLanguage.PortugueseBrazil)
         {
             return reason == ReviewWorkflow.NoLinkReason ? NoLinkEnglish : reason;
+        }
+
+        // The cause of a refusal comes from PathGuard, so it is translated on its own.
+        if (Refused.Match(reason) is { Success: true } refused)
+        {
+            var cause = refused.Groups[2].Value;
+            return $"arquivo de requisitos {refused.Groups[1].Value} recusado: {PortugueseRefusals.GetValueOrDefault(cause, cause)}";
         }
 
         foreach (var (pattern, portuguese) in Portuguese)
