@@ -247,6 +247,34 @@ public sealed class ReviewCommandTests : IDisposable
         Assert.Equal("customfield_10042", options.JiraAcceptanceCriteriaField);
     }
 
+    [Fact]
+    public async Task The_language_of_the_description_and_commits_wins_over_the_language_option()
+    {
+        const string description = "Corrige o total do carrinho para que os descontos não sejam ignorados.";
+        gitHub.Body = description;
+        gitHub.CommitMessages.Add("fix(cart): aplica os descontos ao total\n\nCo-Authored-By: Claude <noreply@example.test>");
+        var model = new ScriptedChatClient().ThenText("{\"findings\": []}");
+
+        var (_, result) = await RunAsync(model, "--language", "en");
+
+        Assert.Equal(ReviewLanguage.PortugueseBrazil, result!.Language);
+        Assert.Contains("Language: pt-BR, from the description and 1 commit messages.", log.ToString());
+        var sent = string.Join("\n", model.Calls[0].Messages.Select(m => m.Text)) + model.Calls[0].Options?.Instructions;
+        Assert.Contains("in Brazilian Portuguese", sent);
+        Assert.DoesNotContain(description, sent);
+    }
+
+    [Fact]
+    public async Task The_language_option_decides_when_the_description_and_commits_do_not_tell()
+    {
+        gitHub.Body = null;
+
+        var (_, result) = await RunAsync(new ScriptedChatClient().ThenText("{\"findings\": []}"), "--language", "pt-BR");
+
+        Assert.Equal(ReviewLanguage.PortugueseBrazil, result!.Language);
+        Assert.Contains("Language: pt-BR, from --language; the description and 0 commit messages do not tell.", log.ToString());
+    }
+
     [Theory]
     [InlineData(null, "en")]
     [InlineData("pt-br", "pt-BR")]

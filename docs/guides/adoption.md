@@ -73,7 +73,7 @@ The caller's `permissions` are the most the reusable workflow's jobs can get; ea
 | `exclude` | empty | Extra paths the review never reads, one glob per line. `.env*`, key and certificate files, lockfiles, binaries, and `*.min.*` are always excluded. |
 | `max-context-chars` | `400000` | Characters the review may read before its coverage becomes incomplete. |
 | `max-tool-calls` | `40` | Repository tool calls the review may make before its coverage becomes incomplete. |
-| `language` | `en` | The language of the review's text and of every published label: `en` or `pt-BR`. Any other value stops the review with a usage error. |
+| `language` | `en` | The language (`en` or `pt-BR`) of the review's text and of every published label when the pull request's description and commit messages do not tell; otherwise the review writes in theirs. Any other value stops the review with a usage error. |
 
 The Jira inputs need a tool release that includes the Jira source (REQ-002). With an older release, setting `jira-base-url` stops the review with a usage error.
 

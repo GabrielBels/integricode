@@ -44,6 +44,22 @@ public class GitHubClientReadTests
     }
 
     [Fact]
+    public async Task Reads_the_commit_messages_across_pages()
+    {
+        var handler = new FakeHttpHandler()
+            .OnJson(HttpMethod.Get, "/repos/octo/shop/pulls/7/commits?per_page=100", """
+                [{"sha": "a1", "commit": {"message": "fix(cart): apply discounts"}}]
+                """, link: "<https://api.github.test/repos/octo/shop/pulls/7/commits?per_page=100&page=2>; rel=\"next\"")
+            .OnJson(HttpMethod.Get, "/repos/octo/shop/pulls/7/commits?per_page=100&page=2", """
+                [{"sha": "b2", "commit": {"message": "test(cart): cover discounts"}}]
+                """);
+
+        var messages = await Client(handler).GetPullRequestCommitMessagesAsync("octo/shop", 7, CancellationToken.None);
+
+        Assert.Equal(["fix(cart): apply discounts", "test(cart): cover discounts"], messages);
+    }
+
+    [Fact]
     public async Task A_failed_call_throws_with_the_status_and_without_the_body()
     {
         var handler = new FakeHttpHandler().On(HttpMethod.Get, "/repos/octo/shop/pulls/7", _ => FakeHttpHandler.Json("{\"message\":\"secret detail\"}", HttpStatusCode.Forbidden));

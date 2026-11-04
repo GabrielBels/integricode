@@ -47,6 +47,8 @@ public sealed partial class FakeGitHub : HttpMessageHandler
 
     public List<PullRequestFile> Files { get; } = [];
 
+    public List<string> CommitMessages { get; } = [];
+
     public List<FakeComment> IssueComments { get; } = [];
 
     public List<FakeComment> ReviewComments { get; } = [];
@@ -76,6 +78,7 @@ public sealed partial class FakeGitHub : HttpMessageHandler
         {
             ("GET", _) when path == pulls => PullRequestStatus is { } status ? new HttpResponseMessage(status) : Json(PullRequestJson()),
             ("GET", _) when path == pulls + "/files" => Json(new JsonArray([.. Files.Select(FileJson)])),
+            ("GET", _) when path == pulls + "/commits" => Json(new JsonArray([.. CommitMessages.Select(CommitJson)])),
             ("GET", _) when path == issues + "/comments" => Json(new JsonArray([.. IssueComments.Select(CommentJson)])),
             ("POST", _) when path == issues + "/comments" => Json(CommentJson(AddIssueComment(Read(body)["body"]!.GetValue<string>())), HttpStatusCode.Created),
             ("PATCH", _) when IssueCommentPath().Match(path) is { Success: true } match => UpdateIssueComment(long.Parse(match.Groups["id"].Value, CultureInfo.InvariantCulture), Read(body)),
@@ -152,6 +155,12 @@ public sealed partial class FakeGitHub : HttpMessageHandler
         ["status"] = file.Status,
         ["patch"] = file.Patch,
         ["additions"] = file.Additions,
+    };
+
+    private static JsonObject CommitJson(string message) => new()
+    {
+        ["sha"] = "2222222222222222222222222222222222222222",
+        ["commit"] = new JsonObject { ["message"] = message },
     };
 
     private static JsonObject CommentJson(FakeComment comment) => new()

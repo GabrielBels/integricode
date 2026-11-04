@@ -70,6 +70,18 @@ public sealed partial class GitHubClient
         return files;
     }
 
+    /// <summary>Lists the messages of the pull request's commits, following the <c>Link</c> header across pages.</summary>
+    public async Task<IReadOnlyList<string>> GetPullRequestCommitMessagesAsync(string repository, int number, CancellationToken cancellationToken)
+    {
+        var messages = new List<string>();
+        await foreach (var dto in GetPagesAsync<CommitDto>(Relative($"repos/{repository}/pulls/{number}/commits?per_page=100"), cancellationToken))
+        {
+            messages.Add(dto.Commit?.Message ?? string.Empty);
+        }
+
+        return messages;
+    }
+
     public Task<IReadOnlyList<GitHubComment>> ListIssueCommentsAsync(string repository, int number, CancellationToken cancellationToken) =>
         ListCommentsAsync(Relative($"repos/{repository}/issues/{number}/comments?per_page=100"), cancellationToken);
 
@@ -219,6 +231,10 @@ public sealed partial class GitHubClient
     private sealed record RepoDto(string FullName);
 
     private sealed record FileDto(string Filename, string? Status, string? Patch, int? Additions);
+
+    private sealed record CommitDto(CommitDetailDto? Commit);
+
+    private sealed record CommitDetailDto(string? Message);
 
     private sealed record CommentDto(long Id, string NodeId, string? Body, UserDto? User, string? Path, int? Line);
 

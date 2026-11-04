@@ -61,7 +61,7 @@ Per repository, through the reusable workflow's inputs and secrets (FR-16):
 | `requirements-file` (default `docs/requirements.md`) | REQ source |
 | `jira-base-url`, `jira-acceptance-criteria-field` | Jira source (REQ-002) |
 | `exclude` (multi-line globs), `max-context-chars` (400000), `max-tool-calls` (40) | Context boundary |
-| `language` (`en` or `pt-BR`, default `en`) | Language of the model's text and of the published labels |
+| `language` (`en` or `pt-BR`, default `en`) | Language of the model's text and of the published labels when the pull request's description and commit messages, read by the tool only, do not tell |
 | secrets `model-api-key`, `jira-email`, `jira-api-token` | Stored as GitHub secrets; Jira ones only in the `review` job |
 
 ## Error Handling
