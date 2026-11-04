@@ -109,6 +109,7 @@ public sealed class ReviewCommand(
         {
             pullRequest = await gitHub.GetPullRequestAsync(options.Repository, options.PullRequest, cancellationToken);
             files = await gitHub.GetPullRequestFilesAsync(options.Repository, options.PullRequest, cancellationToken);
+            options = options with { Language = await PullRequestLanguage.ResolveAsync(gitHub, options.Repository, pullRequest, options.Language, log, cancellationToken) };
         }
         catch (GitHubApiException exception)
         {

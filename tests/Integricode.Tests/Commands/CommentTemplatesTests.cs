@@ -191,11 +191,24 @@ public class CommentTemplatesTests
             "**Resolve o REQ-150?** Parcialmente — A busca recusa exatamente 100 números.\n"
             + "- ❌ \"duplicates collapse, at most 100 numbers\" — src/Search.cs:57 recusa o 100º\n"
             + "- ❓ \"the period is ignored whenever numbers are searched\" — não alcancei a tela\n"
-            + "- ✅ 1 de 3 critérios cobertos\n",
+            + "- ⚠️ 1 de 3 critérios avaliados cobertos\n",
             summary);
         Assert.Contains("| Estado | Revisado, cobertura completa |", summary);
         Assert.Contains("| Requisito | REQ-150 (do título) |", summary);
         Assert.Contains("| Lentes | csharp, security |", summary);
+    }
+
+    [Theory]
+    [InlineData(CriterionStatus.Covered, "- ✅ 1 of 1 checked criteria covered\n")]
+    [InlineData(CriterionStatus.Missing, "- ⚠️ 0 of 1 checked criteria covered\n")]
+    public void The_covered_count_is_checked_only_when_every_criterion_is_covered(CriterionStatus status, string expected)
+    {
+        var result = Result() with
+        {
+            Verdict = new RequirementVerdict(VerdictAnswer.Partly, "Summary.", [new CriterionCheck("at most 100 numbers", status, "src/Search.cs:57")]),
+        };
+
+        Assert.Contains(expected, CommentTemplates.Summary(result, []));
     }
 
     [Fact]

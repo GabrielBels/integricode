@@ -16,6 +16,7 @@ We will embed the `pr-review` method in the review instructions (review angles, 
 - A reader sees at once what blocks the merge, and the requirement verdict shows each criterion not covered.
 - Text in the data cannot close its block, and a review the data talked into silence still carries the tripwire's warning and never says "good to merge".
 - A suggestion can only replace diff lines next to its finding and stays small; a "yes" verdict without validated evidence, or that the validated rows contradict, is published as "partly", and the scoreboard never says "good to merge" over an unsolved requirement.
+- The language follows the pull request's description and commit subject lines, which the tool reads only to pick it and never sends to the model; the `language` input applies when they do not tell (owner decision of 2026-11-03, REQ-004).
 - The instructions grow by the chosen lenses, about 4,000 to 10,000 tokens per review.
 - The lens copies drift from the skill; updating them is a manual copy of the skill's references.
 - The review cannot run the skill's live OWASP fetch, since the review job has no network; security findings name the attack path without an OWASP id.

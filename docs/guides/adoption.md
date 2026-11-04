@@ -73,7 +73,7 @@ The caller's `permissions` are the most the reusable workflow's jobs can get; ea
 | `exclude` | empty | Extra paths the review never reads, one glob per line. `.env*`, key and certificate files, lockfiles, binaries, and `*.min.*` are always excluded. |
 | `max-context-chars` | `400000` | Characters the review may read before its coverage becomes incomplete. |
 | `max-tool-calls` | `40` | Repository tool calls the review may make before its coverage becomes incomplete. |
-| `language` | `en` | The language of the review's text and of every published label: `en` or `pt-BR`. Any other value stops the review with a usage error. |
+| `language` | `en` | The language (`en` or `pt-BR`) of the review's text and of every published label when the pull request's description and commit subject lines do not tell; otherwise the review writes in theirs. The tool counts the words only one of the two languages uses, outside code, links, and HTML comments, so a text with none of them, or as many of each, leaves the choice to this input. Any other value stops the review with a usage error. |
 
 The Jira inputs need a tool release that includes the Jira source (REQ-002). With an older release, setting `jira-base-url` stops the review with a usage error.
 
@@ -109,7 +109,7 @@ If the pull request receives new commits before the findings are published, the 
 
 The diff, the changed files, and the requirement, Jira comments included, can carry text meant to steer an AI reviewer, such as "ignore previous instructions" in a code comment. Integricode treats all of it as data:
 
-- The pull request's title, description, branch name, and commit messages never reach the model; they only link the requirement.
+- The pull request's title, description, branch name, and commit messages never reach the model; the tool reads them only to link the requirement (title, branch name, description) and to pick the language (description, commit messages).
 - The requirement, the diff, and the changed files reach the model inside blocks whose tags end with a random value of that run, so text in them cannot close its block and pose as instructions. Files the model reads with its tools come back as plain tool results, which its instructions also treat as data.
 - The model has only read-only tools over the checkout, no network, and no secret but its own key; everything it writes is escaped before publishing, and a suggestion can only replace diff lines next to its finding.
 - Outside the model, Integricode scans the lines the pull request adds (the whole file when it reaches the model without its patch, except a rename or copy that adds no line) and the requirement for phrases addressed to AI reviewers. Each hit appears in the summary under "Possible prompt injection" with its location, and the scoreboard then never says "good to merge". Check those lines and the findings by hand.

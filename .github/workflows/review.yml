@@ -43,7 +43,7 @@ on:
         type: number
         default: 40
       language:
-        description: Language of the review text and of the published labels, en or pt-BR.
+        description: Language of the review text and of the published labels, en or pt-BR, when the pull request's description and commit messages do not tell.
         type: string
         default: en
     secrets:

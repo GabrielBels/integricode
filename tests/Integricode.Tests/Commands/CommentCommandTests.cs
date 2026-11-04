@@ -355,9 +355,21 @@ public sealed class CommentCommandTests : IDisposable
     }
 
     [Fact]
-    public async Task Skipping_by_policy_uses_the_language_option_for_the_labels()
+    public async Task Skipping_by_policy_uses_the_language_option_when_the_description_and_commits_do_not_tell()
     {
+        gitHub.Body = null;
         var options = CommentOptions.Parse(["--repo", FakeGitHub.Repository, "--pr", "7", "--skipped-by-policy", "fork", "--language", "pt-BR"]);
+
+        await new CommentCommand(gitHub.Client(), new ActionsLog(log)).RunAsync(options, CancellationToken.None);
+
+        Assert.Contains("| Estado | Ignorado pela política |", Summary.Body);
+    }
+
+    [Fact]
+    public async Task Skipping_by_policy_writes_in_the_language_of_the_description_and_commits()
+    {
+        gitHub.Body = "Ajusta o cálculo do total para que os descontos sejam aplicados.";
+        var options = CommentOptions.Parse(["--repo", FakeGitHub.Repository, "--pr", "7", "--skipped-by-policy", "fork"]);
 
         await new CommentCommand(gitHub.Client(), new ActionsLog(log)).RunAsync(options, CancellationToken.None);
 

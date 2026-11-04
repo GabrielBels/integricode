@@ -6,7 +6,10 @@ namespace Integricode.Commands;
 
 /// <summary>The <c>comment</c> command's options.</summary>
 /// <param name="SkippedByPolicy">The policy that stopped the review (only <c>fork</c>); set, no result file is read.</param>
-/// <param name="Language">The labels' language when no result file is read; a result carries its own.</param>
+/// <param name="Language">
+/// The labels' language when no result file is read and the pull request's description and commit messages do not
+/// tell; a result carries its own.
+/// </param>
 public sealed record CommentOptions(string Repository, int PullRequest, string ResultPath, string? SkippedByPolicy = null, string Language = ReviewLanguage.English)
 {
     public const string ForkPolicy = "fork";
@@ -108,7 +111,7 @@ public sealed class CommentCommand(GitHubClient gitHub, ActionsLog log, string p
             PullRequestNumber = options.PullRequest,
             HeadSha = pullRequest.HeadSha,
             Coverage = Coverage.SkippedByPolicy(ForkReason),
-            Language = options.Language,
+            Language = await PullRequestLanguage.ResolveAsync(gitHub, options.Repository, pullRequest, options.Language, log, cancellationToken),
         };
 
         await UpsertSummaryAsync(options, await FindSummaryAsync(options, cancellationToken), CommentTemplates.Summary(result, []), cancellationToken);

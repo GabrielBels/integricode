@@ -146,3 +146,4 @@ The risks of the product PRD apply: see [prd.md](../prd.md). Specific to this de
 - 2026-10-30: Does the owner approve PRD-001, including write-access-only review command, the command on drafts, the 10-minute latency target, and testing Jira on a site the owner controls? → Yes (Approved)
 - 2026-10-30: /breakdown PRD-001 → design, ADR-001 to ADR-004, and REQ-001 to REQ-003 approved by the owner (Approved)
 - 2026-11-03: How are findings presented? → In the format and by the method of the dev-flow `pr-review` skill: traffic lights, Conventional Comments labels, suggestions, and a requirement verdict, in the configured language, with guardrails against prompt injection (Approved; REQ-004)
+- 2026-11-03: Which language do the comments use? → The language of the pull request's description and commit messages; the `language` input applies only when they do not tell (Approved; REQ-004)
