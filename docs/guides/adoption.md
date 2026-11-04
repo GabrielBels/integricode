@@ -109,7 +109,7 @@ If the pull request receives new commits before the findings are published, the 
 
 The diff, the changed files, and the requirement, Jira comments included, can carry text meant to steer an AI reviewer, such as "ignore previous instructions" in a code comment. Integricode treats all of it as data:
 
-- The pull request's title, description, branch name, and commit messages never reach the model; they only link the requirement.
+- The pull request's title, description, branch name, and commit messages never reach the model; the tool reads them only to link the requirement (title, branch name, description) and to pick the language (description, commit messages).
 - The requirement, the diff, and the changed files reach the model inside blocks whose tags end with a random value of that run, so text in them cannot close its block and pose as instructions. Files the model reads with its tools come back as plain tool results, which its instructions also treat as data.
 - The model has only read-only tools over the checkout, no network, and no secret but its own key; everything it writes is escaped before publishing, and a suggestion can only replace diff lines next to its finding.
 - Outside the model, Integricode scans the lines the pull request adds (the whole file when it reaches the model without its patch, except a rename or copy that adds no line) and the requirement for phrases addressed to AI reviewers. Each hit appears in the summary under "Possible prompt injection" with its location, and the scoreboard then never says "good to merge". Check those lines and the findings by hand.

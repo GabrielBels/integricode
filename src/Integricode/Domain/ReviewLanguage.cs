@@ -30,7 +30,8 @@ public static partial class ReviewLanguage
 
     /// <summary>
     /// The supported language most of these texts are written in, counting the words only one language uses; HTML
-    /// comments, code, links, e-mail addresses, and commit trailers (<c>Co-authored-by:</c>) are not counted.
+    /// comments, code, links, e-mail addresses, commit trailers (<c>Co-authored-by:</c>), and the line git adds to a
+    /// revert (<c>This reverts commit ...</c>) are not counted.
     /// </summary>
     /// <param name="texts">The pull request's description and commit messages; null or empty ones are skipped.</param>
     /// <returns>The language with more words, or null when no word tells them apart or both have as many.</returns>
@@ -58,7 +59,7 @@ public static partial class ReviewLanguage
         return english == portuguese ? null : english > portuguese ? English : PortugueseBrazil;
     }
 
-    [GeneratedRegex(@"<!--[\s\S]*?-->|```[\s\S]*?```|`[^`\n]*`|https?://\S+|\S+@\S+|^[ \t]*[a-z][a-z-]*-by:.*$", RegexOptions.IgnoreCase | RegexOptions.Multiline)]
+    [GeneratedRegex(@"<!--[\s\S]*?-->|```[\s\S]*?```|`[^`\n]*`|https?://\S+|\S+@\S+|^[ \t]*[a-z][a-z-]*-by:.*$|^[ \t]*This reverts commit [0-9a-f]+\.?[ \t]*$",RegexOptions.IgnoreCase | RegexOptions.Multiline)]
     private static partial Regex NotProse();
 
     [GeneratedRegex(@"\p{L}+")]

@@ -25,6 +25,15 @@ public class ReviewLanguageTests
     }
 
     [Fact]
+    public void The_line_git_adds_to_a_revert_is_not_counted()
+    {
+        // Counted, "This" would tie the message's one Portuguese word.
+        const string commit = "Revert \"limite de números\"\n\nThis reverts commit 16b20392b6366e4c0a75f37af2ce3d92b6639652.";
+
+        Assert.Equal(ReviewLanguage.PortugueseBrazil, ReviewLanguage.Detect([commit]));
+    }
+
+    [Fact]
     public void The_description_and_the_commits_are_counted_together()
     {
         string[] texts =

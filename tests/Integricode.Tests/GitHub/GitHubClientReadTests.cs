@@ -44,11 +44,12 @@ public class GitHubClientReadTests
     }
 
     [Fact]
-    public async Task Reads_the_commit_messages_across_pages()
+    public async Task Reads_the_commit_messages_across_pages_without_merge_commits()
     {
         var handler = new FakeHttpHandler()
             .OnJson(HttpMethod.Get, "/repos/octo/shop/pulls/7/commits?per_page=100", """
-                [{"sha": "a1", "commit": {"message": "fix(cart): apply discounts"}}]
+                [{"sha": "a1", "commit": {"message": "fix(cart): apply discounts"}, "parents": [{"sha": "p0"}]},
+                 {"sha": "m1", "commit": {"message": "Merge branch 'main' into feat/cart"}, "parents": [{"sha": "a1"}, {"sha": "p9"}]}]
                 """, link: "<https://api.github.test/repos/octo/shop/pulls/7/commits?per_page=100&page=2>; rel=\"next\"")
             .OnJson(HttpMethod.Get, "/repos/octo/shop/pulls/7/commits?per_page=100&page=2", """
                 [{"sha": "b2", "commit": {"message": "test(cart): cover discounts"}}]

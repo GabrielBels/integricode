@@ -70,13 +70,19 @@ public sealed partial class GitHubClient
         return files;
     }
 
-    /// <summary>Lists the messages of the pull request's commits, following the <c>Link</c> header across pages.</summary>
+    /// <summary>
+    /// Lists the messages of the pull request's commits, following the <c>Link</c> header across pages. Merge commits
+    /// are left out: git writes their messages ("Merge branch 'main' into ..."), not the author.
+    /// </summary>
     public async Task<IReadOnlyList<string>> GetPullRequestCommitMessagesAsync(string repository, int number, CancellationToken cancellationToken)
     {
         var messages = new List<string>();
         await foreach (var dto in GetPagesAsync<CommitDto>(Relative($"repos/{repository}/pulls/{number}/commits?per_page=100"), cancellationToken))
         {
-            messages.Add(dto.Commit?.Message ?? string.Empty);
+            if (dto.Parents is not { Count: > 1 })
+            {
+                messages.Add(dto.Commit?.Message ?? string.Empty);
+            }
         }
 
         return messages;
@@ -232,9 +238,11 @@ public sealed partial class GitHubClient
 
     private sealed record FileDto(string Filename, string? Status, string? Patch, int? Additions);
 
-    private sealed record CommitDto(CommitDetailDto? Commit);
+    private sealed record CommitDto(CommitDetailDto? Commit, IReadOnlyList<ParentDto>? Parents);
 
     private sealed record CommitDetailDto(string? Message);
+
+    private sealed record ParentDto(string? Sha);
 
     private sealed record CommentDto(long Id, string NodeId, string? Body, UserDto? User, string? Path, int? Line);
 

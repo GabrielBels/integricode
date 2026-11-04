@@ -265,6 +265,18 @@ public sealed class ReviewCommandTests : IDisposable
     }
 
     [Fact]
+    public async Task A_merge_commit_git_wrote_does_not_count_for_the_language()
+    {
+        gitHub.Body = null;
+        gitHub.CommitMessages.Add("fix(guias): limite de números");
+        gitHub.MergeCommitMessages.Add("Merge branch 'main' into feat/guias");
+
+        var (_, result) = await RunAsync(new ScriptedChatClient().ThenText("{\"findings\": []}"), "--language", "en");
+
+        Assert.Equal(ReviewLanguage.PortugueseBrazil, result!.Language);
+    }
+
+    [Fact]
     public async Task The_language_option_decides_when_the_description_and_commits_do_not_tell()
     {
         gitHub.Body = null;
