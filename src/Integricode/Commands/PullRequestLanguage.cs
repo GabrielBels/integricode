@@ -37,15 +37,26 @@ internal static class PullRequestLanguage
             messages = [];
         }
 
-        if (ReviewLanguage.Detect([pullRequest.Body, .. messages.Select(Subject)]) is { } detected)
+        var subjects = messages.Select(Subject).Where(WrittenByAuthor).ToList();
+        if (ReviewLanguage.Detect([pullRequest.Body, .. subjects]) is { } detected)
         {
-            log.Info($"Language: {detected}, from the description and {messages.Count} commit subjects.");
+            log.Info($"Language: {detected}, from the description and {subjects.Count} commit subjects.");
             return detected;
         }
 
-        log.Info($"Language: {fallback}, from --language; the description and {messages.Count} commit subjects do not tell.");
+        log.Info($"Language: {fallback}, from --language; the description and {subjects.Count} commit subjects do not tell.");
         return fallback;
     }
+
+    /// <summary>
+    /// Whether the author wrote this subject: GitHub writes "Apply suggestion from ..." and "Apply suggestions from ..."
+    /// in English when review suggestions are applied, whatever language the team writes in.
+    /// </summary>
+    /// <param name="subject">A commit subject line.</param>
+    /// <returns>False for the subjects GitHub writes for applied suggestions; true otherwise.</returns>
+    private static bool WrittenByAuthor(string subject) =>
+        !subject.StartsWith("Apply suggestion from ", StringComparison.Ordinal)
+        && !subject.StartsWith("Apply suggestions from ", StringComparison.Ordinal);
 
     /// <summary>
     /// The first line of a commit message, which its author writes; the body also carries trailers, tool footers, and

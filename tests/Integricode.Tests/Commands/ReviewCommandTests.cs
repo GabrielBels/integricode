@@ -267,6 +267,20 @@ public sealed class ReviewCommandTests : IDisposable
     }
 
     [Fact]
+    public async Task A_suggestion_commit_github_wrote_does_not_count_for_the_language()
+    {
+        gitHub.Body = "Corrige o cálculo do desconto.";
+        gitHub.CommitMessages.Add("fix: corrige cálculo do desconto");
+        gitHub.CommitMessages.Add("Apply suggestions from code review\n\nCo-authored-by: Reviewer <reviewer@example.test>");
+        gitHub.CommitMessages.Add("Apply suggestion from @reviewer");
+
+        var (_, result) = await RunAsync(new ScriptedChatClient().ThenText("{\"findings\": []}"), "--language", "pt-BR");
+
+        Assert.Equal(ReviewLanguage.PortugueseBrazil, result!.Language);
+        Assert.Contains("the description and 1 commit subjects do not tell.", log.ToString());
+    }
+
+    [Fact]
     public async Task Only_the_subject_of_a_commit_counts_for_the_language()
     {
         // The body's footer, cherry-pick line, and trailer would give English 3 words against the subject's 1.
