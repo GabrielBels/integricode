@@ -12,27 +12,11 @@ public class ReviewLanguageTests
     [InlineData("Ajusta `if the value is not in the list` na busca.", ReviewLanguage.PortugueseBrazil)]
     [InlineData("Fixes it; see https://github.com/octo/shop/issues/1 and https://docs.example.com/a", ReviewLanguage.English)]
     [InlineData("Fixes it, ping dev@team.com.br", ReviewLanguage.English)]
+    [InlineData("fix: trata quando o campo for vazio", ReviewLanguage.PortugueseBrazil)]
+    [InlineData("Ajusta is_valid e has_items na busca", ReviewLanguage.PortugueseBrazil)]
     public void The_description_decides_the_language(string description, string expected)
     {
         Assert.Equal(expected, ReviewLanguage.Detect([description]));
-    }
-
-    [Fact]
-    public void Commit_messages_count_without_their_trailers()
-    {
-        // Counted, the two trailers' "by" would outweigh the message's one Portuguese word.
-        const string commit = "fix(guias): limite de números\n\nCo-Authored-By: Claude Opus <noreply@anthropic.example.test>\nSigned-off-by: Dev <dev@example.test>";
-
-        Assert.Equal(ReviewLanguage.PortugueseBrazil, ReviewLanguage.Detect([null, commit]));
-    }
-
-    [Fact]
-    public void The_line_git_adds_to_a_revert_is_not_counted()
-    {
-        // Counted, "This" would tie the message's one Portuguese word.
-        const string commit = "Revert \"limite de números\"\n\nThis reverts commit 16b20392b6366e4c0a75f37af2ce3d92b6639652.";
-
-        Assert.Equal(ReviewLanguage.PortugueseBrazil, ReviewLanguage.Detect([commit]));
     }
 
     [Fact]

@@ -251,17 +251,44 @@ public sealed class ReviewCommandTests : IDisposable
     public async Task The_language_of_the_description_and_commits_wins_over_the_language_option()
     {
         const string description = "Corrige o total do carrinho para que os descontos não sejam ignorados.";
+        const string subject = "fix(cart): aplica os descontos ao total";
         gitHub.Body = description;
-        gitHub.CommitMessages.Add("fix(cart): aplica os descontos ao total\n\nCo-Authored-By: Claude <noreply@example.test>");
+        gitHub.CommitMessages.Add(subject + "\n\nCo-Authored-By: Claude <noreply@example.test>");
         var model = new ScriptedChatClient().ThenText("{\"findings\": []}");
 
         var (_, result) = await RunAsync(model, "--language", "en");
 
         Assert.Equal(ReviewLanguage.PortugueseBrazil, result!.Language);
-        Assert.Contains("Language: pt-BR, from the description and 1 commit messages.", log.ToString());
+        Assert.Contains("Language: pt-BR, from the description and 1 commit subjects.", log.ToString());
         var sent = string.Join("\n", model.Calls[0].Messages.Select(m => m.Text)) + model.Calls[0].Options?.Instructions;
         Assert.Contains("in Brazilian Portuguese", sent);
         Assert.DoesNotContain(description, sent);
+        Assert.DoesNotContain(subject, sent);
+    }
+
+    [Fact]
+    public async Task Only_the_subject_of_a_commit_counts_for_the_language()
+    {
+        // The body's footer, cherry-pick line, and trailer would give English 3 words against the subject's 1.
+        gitHub.Body = null;
+        gitHub.CommitMessages.Add("fix(guias): limite de números\n\n🤖 Generated with [Claude Code](https://claude.example.test)\n\n(cherry picked from commit 16b2039)\nCo-Authored-By: Claude <noreply@example.test>");
+
+        var (_, result) = await RunAsync(new ScriptedChatClient().ThenText("{\"findings\": []}"), "--language", "en");
+
+        Assert.Equal(ReviewLanguage.PortugueseBrazil, result!.Language);
+    }
+
+    [Fact]
+    public async Task A_failed_commit_listing_still_reviews_with_the_description_language()
+    {
+        gitHub.Body = "Corrige o total do carrinho para que os descontos não sejam ignorados.";
+        gitHub.CommitsStatus = HttpStatusCode.BadGateway;
+
+        var (exitCode, result) = await RunAsync(new ScriptedChatClient().ThenText("{\"findings\": []}"), "--language", "en");
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal(ReviewLanguage.PortugueseBrazil, result!.Language);
+        Assert.Contains("::warning::Cannot list the commits: GitHub returned HTTP 502; picking the language without them.", log.ToString());
     }
 
     [Fact]
@@ -284,7 +311,7 @@ public sealed class ReviewCommandTests : IDisposable
         var (_, result) = await RunAsync(new ScriptedChatClient().ThenText("{\"findings\": []}"), "--language", "pt-BR");
 
         Assert.Equal(ReviewLanguage.PortugueseBrazil, result!.Language);
-        Assert.Contains("Language: pt-BR, from --language; the description and 0 commit messages do not tell.", log.ToString());
+        Assert.Contains("Language: pt-BR, from --language; the description and 0 commit subjects do not tell.", log.ToString());
     }
 
     [Theory]

@@ -64,6 +64,8 @@ public sealed partial class FakeGitHub : HttpMessageHandler
 
     public HttpStatusCode? PullRequestStatus { get; set; }
 
+    public HttpStatusCode? CommitsStatus { get; set; }
+
     public GitHubClient Client() => new(new HttpClient(this), new Uri("https://api.github.test/"), "fake-token");
 
     public FakeComment AddIssueComment(string body, string user = Bot) => Add(IssueComments, body, user, null, null);
@@ -81,6 +83,7 @@ public sealed partial class FakeGitHub : HttpMessageHandler
         {
             ("GET", _) when path == pulls => PullRequestStatus is { } status ? new HttpResponseMessage(status) : Json(PullRequestJson()),
             ("GET", _) when path == pulls + "/files" => Json(new JsonArray([.. Files.Select(FileJson)])),
+            ("GET", _) when path == pulls + "/commits" && CommitsStatus is { } commitsStatus => new HttpResponseMessage(commitsStatus),
             ("GET", _) when path == pulls + "/commits" => Json(new JsonArray([.. CommitMessages.Select(m => CommitJson(m, 1)), .. MergeCommitMessages.Select(m => CommitJson(m, 2))])),
             ("GET", _) when path == issues + "/comments" => Json(new JsonArray([.. IssueComments.Select(CommentJson)])),
             ("POST", _) when path == issues + "/comments" => Json(CommentJson(AddIssueComment(Read(body)["body"]!.GetValue<string>())), HttpStatusCode.Created),
