@@ -246,7 +246,8 @@ public static partial class CommentTemplates
         var covered = verdict.Criteria.Count(row => row.Status == CriterionStatus.Covered);
         if (verdict.Criteria.Count > 0)
         {
-            body.Append("- ✅ ").Append(Format(labels.CoveredCount, Count(covered), Count(verdict.Criteria.Count))).Append('\n');
+            body.Append(covered == verdict.Criteria.Count ? "- ✅ " : "- ⚠️ ")
+                .Append(Format(labels.CoveredCount, Count(covered), Count(verdict.Criteria.Count))).Append('\n');
         }
 
         body.Append('\n');
@@ -478,7 +479,7 @@ public static partial class CommentTemplates
             Yes = "Yes",
             Partly = "Partly",
             No = "No",
-            CoveredCount = "{0} of {1} criteria covered",
+            CoveredCount = "{0} of {1} checked criteria covered",
             RequirementLens = "requirement",
             OutsideDiff = "Findings outside the diff",
             Injection = "Possible prompt injection",
@@ -527,7 +528,7 @@ public static partial class CommentTemplates
             Yes = "Sim",
             Partly = "Parcialmente",
             No = "Não",
-            CoveredCount = "{0} de {1} critérios cobertos",
+            CoveredCount = "{0} de {1} critérios avaliados cobertos",
             RequirementLens = "requisito",
             OutsideDiff = "Achados fora do diff",
             Injection = "Possível prompt injection",
