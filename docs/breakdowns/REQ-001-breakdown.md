@@ -288,7 +288,7 @@
 - **Depends on**: None
 - **Capabilities**: .NET SDK 10.0.403 (verified on the owner's machine); network to nuget.org for restore (owner confirms); push a branch to `origin` (`GabrielBels/integricode`, private) and open a pull request with `gh` (account `GabrielBels`, scopes `repo` and `workflow`, verified; the repository must exist first).
 - **Out of scope**: running against a real repository, Jira site, or model provider; publishing packages; creating tags; changing repository settings; merging.
-- **Approved decisions**: Model providers: "OpenAI, Azure e Anthropic (Rec.)" (OpenAI, Azure OpenAI, and Anthropic, chosen per repository). Slicing: "3 REQs, 3 PRs". Harness: "Claude Code". Approach: "Fechado (Recomendado)" (reusable workflow, `review` and `comment` jobs, .NET tool). Breakdown approval: "Aprovar tudo" (covers `ci.yml` with read-only permissions, GitHub-owned actions pinned by SHA, configuration through workflow inputs and command arguments instead of a YAML file, the published fields, and moving the major tag on release).
+- **Approved decisions**: Model providers: "OpenAI, Azure e Anthropic (Rec.)" (OpenAI, Azure OpenAI, and Anthropic, chosen per repository). Slicing: "3 REQs, 3 PRs". Harness: "Claude Code". Approach: "Closed (Recommended)" (reusable workflow, `review` and `comment` jobs, .NET tool). Breakdown approval: "Aprovar tudo" (covers `ci.yml` with read-only permissions, GitHub-owned actions pinned by SHA, configuration through workflow inputs and command arguments instead of a YAML file, the published fields, and moving the major tag on release).
 - **Assumptions**: None.
 
 ### S2: Pull Request, Requirement, and Repository Inputs
@@ -306,7 +306,7 @@
 - **Depends on**: S2
 - **Capabilities**: same as S1; no model provider key is needed, tests use a fake `IChatClient`.
 - **Out of scope**: same as S1.
-- **Approved decisions**: Bug findings only on changed lines: "Só linhas alteradas (Recomendado)". Owner's diagram: `WorkflowBuilder` and `ChatClientAgent` returning a typed `ReviewResult`.
+- **Approved decisions**: Bug findings only on changed lines: "Changed lines only (Recommended)". Owner's diagram: `WorkflowBuilder` and `ChatClientAgent` returning a typed `ReviewResult`.
 - **Assumptions**: The `Anthropic` SDK exposes an `IChatClient`; if it does not, write a thin adapter in `Agent/` without adding a package. Providers without native structured output get the JSON schema in the instructions plus one repair request.
 
 ### S4: Review Command

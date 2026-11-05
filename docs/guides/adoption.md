@@ -6,13 +6,12 @@ A repository adopts it by adding one caller workflow and a few secrets. This gui
 
 ## Before You Start
 
-- **Access to the workflow.** `GabrielBels/integricode` is private, so only repositories its Actions access setting allows can call its workflow. The owner sets this once: in `GabrielBels/integricode`, open **Settings > Actions > General > Access** and choose **Accessible from repositories owned by the user 'GabrielBels'**.
 - **A release.** The caller uses the `v1` tag, which the release workflow creates when the owner pushes the first `v1.Y.Z` tag.
-- **Access to the package.** The tool is a private package on GitHub Packages, which the workflow installs with the adopting repository's own `GITHUB_TOKEN` ([ADR-005](../decisions/ADR-005-install-with-caller-github-token.md)). The owner grants it once per repository, after the first release: on the `Integricode` package page under `GabrielBels`'s **Packages**, open **Package settings > Manage Actions access > Add repository**, pick the repository, and give it the **Read** role.
+- **Access to the package.** The workflow is public, but the tool is a private package on GitHub Packages, which the workflow installs with the adopting repository's own `GITHUB_TOKEN` ([ADR-005](../decisions/ADR-005-install-with-caller-github-token.md)). The owner grants it once per repository, after the first release: on the `Integricode` package page under `GabrielBels`'s **Packages**, open **Package settings > Manage Actions access > Add repository**, pick the repository, and give it the **Read** role.
 - **A model key.** An API key for OpenAI, Azure OpenAI, or Anthropic.
 - **Jira (optional).** To review against Jira Cloud issues, the e-mail and API token of a dedicated read-only Jira account. Let it browse only the projects whose issues this repository's pull requests implement: anyone who can trigger a review can link any issue the account can see, and the review can quote that issue on the pull request.
 
-Repositories outside the `GabrielBels` account, such as an organization's, cannot call the workflow while the repository is private ([ADR-005](../decisions/ADR-005-install-with-caller-github-token.md)).
+A repository without that package access, such as one in another account, cannot install the tool from the workflow; it can [run the tool from source](../../README.md#run-it-from-source) instead.
 
 ## 1. Add the Secrets
 
@@ -122,7 +121,7 @@ A pull request from a fork is never reviewed: its code is never checked out, and
 
 | Symptom | Cause |
 |---|---|
-| The caller fails with a workflow that is not found or not accessible | The Actions access setting of `GabrielBels/integricode` does not allow the repository, or the `v1` tag does not exist. |
+| The caller fails with a workflow that is not found or not accessible | The `uses:` line does not name `GabrielBels/integricode/.github/workflows/review.yml@v1`, or the `v1` tag does not exist. |
 | `Install Integricode` fails with HTTP 401 or 403 | The package's Actions access does not give the repository the Read role, or the caller workflow does not grant `packages: read`. |
 | The summary says failed with a model provider configuration error | The provider, model, endpoint, or `INTEGRICODE_MODEL_API_KEY` is wrong or missing. |
 | A comment `@integricode review` starts no review | The comment does not contain the exact phrase, its author lacks write access, or it was edited instead of posted. |

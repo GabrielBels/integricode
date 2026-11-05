@@ -25,7 +25,7 @@
 
 **Dependencies**: None (REQ-001 merged)
 
-**⚠️ Ask First**: Jira integration and credential scope: approved by the owner ("Conta só leitura (Rec.)").
+**⚠️ Ask First**: Jira integration and credential scope: approved by the owner ("Read-only account (Rec.)").
 
 **Files to Create/Modify**:
 - `src/Integricode/Requirements/Jira/JiraClient.cs`
@@ -108,7 +108,7 @@
 - **Depends on**: None
 - **Capabilities**: .NET SDK 10.0.403 (verified); network to nuget.org for restore (owner confirms); push a branch and open a pull request with `gh` as `GabrielBels` (verified scopes `repo` and `workflow`).
 - **Out of scope**: calling any real Jira site; storing real Jira content; publishing packages; merging.
-- **Approved decisions**: Jira access: "Conta só leitura (Rec.)" (dedicated read-only account, `JIRA_EMAIL` and `JIRA_API_TOKEN` as GitHub secrets, acceptance criteria from a configurable custom field or the description). Sources: "Jira Cloud + REQ (Recomendado)".
+- **Approved decisions**: Jira access: "Read-only account (Rec.)" (dedicated read-only account, `JIRA_EMAIL` and `JIRA_API_TOKEN` as GitHub secrets, acceptance criteria from a configurable custom field or the description). Sources: "Jira Cloud + REQ (Recommended)".
 - **Assumptions**: Comment author names are left out of the text sent to the model.
 
 ### S2: Source Wiring and Docs

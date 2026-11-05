@@ -25,7 +25,7 @@
 
 **Dependencies**: None (REQ-001 merged)
 
-**⚠️ Ask First**: Workflow triggers, permissions, and secrets: approved by the owner (approach A, "Fechado (Recomendado)"); GitHub-owned actions pinned by commit SHA: approved by the owner ("Aprovar tudo").
+**⚠️ Ask First**: Workflow triggers, permissions, and secrets: approved by the owner (approach A, "Closed (Recommended)"); GitHub-owned actions pinned by commit SHA: approved by the owner ("Aprovar tudo").
 
 **Files to Create/Modify**:
 - `.github/workflows/review.yml`
@@ -117,7 +117,7 @@
 - **Depends on**: None
 - **Capabilities**: .NET SDK 10.0.403 (verified); push a branch with workflow files and open a pull request with `gh` as `GabrielBels` (verified scopes `repo` and `workflow`).
 - **Out of scope**: running the workflow against a real repository; creating tags; publishing packages; changing repository settings (Actions access); merging.
-- **Approved decisions**: Approach: "Fechado (Recomendado)" (two jobs, `review` with read permissions and the model and Jira secrets, `comment` with only `pull-requests: write`). Triggers: "#1 PR foi alterado para pronto para revisao #2 alguem marca `@integricode review` no PR". The review command is accepted only from users with write access (approved with PRD-001). Secrets live in GitHub secrets: "qualquer segredo vai ser armazenado como GH Secret".
+- **Approved decisions**: Approach: "Closed (Recommended)" (two jobs, `review` with read permissions and the model and Jira secrets, `comment` with only `pull-requests: write`). Triggers: "#1 the PR was changed to ready for review #2 someone tags `@integricode review` on the PR". The review command is accepted only from users with write access (approved with PRD-001). Secrets live in GitHub secrets: "any secret will be stored as a GH Secret".
 - **Assumptions**: The collaborator-permission endpoint answers with the `GITHUB_TOKEN` of the calling repository.
 
 ### S2: Release and Package
