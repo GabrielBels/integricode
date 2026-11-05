@@ -1,0 +1,29 @@
+<section id="reading" data-transition="fade" style="background:#F7F7F4;color:#14213D;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<div style="display:flex;flex-direction:column;gap:12px">
+<p style="font-size:24px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#1F5BC6">Reading the PR</p>
+<h2 style="font-size:60px;font-weight:600;line-height:1.1;color:#14213D">The diff comes from the API; the code comes from a checkout</h2>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:30px;display:flex;flex-direction:column;gap:8px">
+<p style="font-size:28px;font-weight:700;color:#14213D">1 · GitHub API</p>
+<p style="font-size:24px;line-height:1.4;color:#4A5568">GET /pulls/{n}/files, 100 per page: path, status and patch. DiffMap marks which lines the PR changed.</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:30px;display:flex;flex-direction:column;gap:8px">
+<p style="font-size:28px;font-weight:700;color:#14213D">2 · Checkout at head SHA</p>
+<p style="font-size:24px;line-height:1.4;color:#4A5568">Changed files read from disk, UTF-8 text only, numbered “N: text”; the job first checks the PR did not move.</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:30px;display:flex;flex-direction:column;gap:8px">
+<p style="font-size:28px;font-weight:700;color:#14213D">3 · Tools during the review</p>
+<p style="font-size:24px;line-height:1.4;color:#4A5568">read_file, search and list_dir over the same checkout: callers and conventions, not only PR files.</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:30px;display:flex;flex-direction:column;gap:8px">
+<p style="font-size:28px;font-weight:700;color:#14213D">4 · Validation re-reads</p>
+<p style="font-size:24px;line-height:1.4;color:#4A5568">Each finding’s line must exist in its file at the head SHA, or it is dropped.</p>
+</div>
+</div>
+<div style="background:#FFF4EA;border:2px solid #E08A45;border-radius:16px;padding:24px 32px">
+<p style="font-size:26px;line-height:1.4;color:#14213D"><b>Before anything reaches the model:</b> PathGuard drops .env*, keys, lockfiles, binaries, *.min.* and the exclude input; past 400,000 characters a file becomes a placeholder and coverage is incomplete.</p>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#6B7280">GitHubClient.GetPullRequestFilesAsync · RepositoryTools · PathGuard · ContextBudget · 9</p>
+<aside>The review job checks out the repository at the pull request’s head SHA and, right after, re-reads the pull request: if a commit arrived meanwhile, the job stops and asks for a new review. GitHub returns no patch for binary or very large diffs, and those files are sent without one. A file with a NUL byte in its first 8,000 bytes is treated as binary and skipped. Removed files are not sent. Every patch and every file draws from the same 400,000-character budget the tools use; what does not fit is replaced by a note saying why, and the coverage becomes incomplete with the reason “context budget reached”.</aside>
+</section>

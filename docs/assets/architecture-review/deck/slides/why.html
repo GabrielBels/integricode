@@ -1,0 +1,32 @@
+<section id="why" data-transition="fade" style="background:#F7F7F4;color:#14213D;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:12px">
+<p style="font-size:24px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#1F5BC6">Why it exists</p>
+<h2 style="font-size:60px;font-weight:600;line-height:1.1;color:#14213D">Catch bugs and unmet requirements before a person reviews</h2>
+</div>
+<div style="display:flex;gap:48px;align-items:start">
+<div style="width:620px;display:flex;flex-direction:column;gap:28px">
+<p style="font-size:32px;line-height:1.4;color:#14213D">Reviewers find bugs and missed requirements late, and each one costs a review round.</p>
+<p style="font-size:30px;line-height:1.4;color:#4A5568">Today authors run an AI reviewer by hand, if at all, and nothing checks the change against its ticket before review.</p>
+</div>
+<div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:24px">
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:32px;display:flex;flex-direction:column;gap:8px">
+<p style="font-size:72px;font-weight:700;line-height:1.1;color:#1F5BC6">½</p>
+<p style="font-size:26px;line-height:1.35;color:#4A5568">reviewer comments on bugs or unmet requirements</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:32px;display:flex;flex-direction:column;gap:8px">
+<p style="font-size:72px;font-weight:700;line-height:1.1;color:#1F5BC6">≥ 60%</p>
+<p style="font-size:26px;line-height:1.35;color:#4A5568">of findings acted on by the author</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:32px;display:flex;flex-direction:column;gap:8px">
+<p style="font-size:72px;font-weight:700;line-height:1.1;color:#1F5BC6">−30%</p>
+<p style="font-size:26px;line-height:1.35;color:#4A5568">review rounds that ask for changes</p>
+</div>
+<div style="background:#FFF4EA;border:1px solid #F2C9A5;border-radius:16px;padding:32px;display:flex;flex-direction:column;gap:8px">
+<p style="font-size:72px;font-weight:700;line-height:1.1;color:#B4500E">&lt; 40%</p>
+<p style="font-size:26px;line-height:1.35;color:#4A5568">useful findings after 20 PRs: stop or rescope</p>
+</div>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#6B7280">Targets over the first 20 reviewed PRs, against the owner’s last 20 merged PRs at work (PRD) · 2</p>
+<aside>The product PRD sets three targets over the first 20 reviewed pull requests: half the human-reviewer comments that point to a bug or an unmet requirement, at least 60% of findings followed by a code change at the finding’s location, and 30% fewer changes-requested rounds. The kill criterion: after 20 PRs, stop or rescope if useful findings are below 40% or more than half of the reviews end with incomplete coverage. Baselines are still to be collected from the owner’s last 20 merged PRs at work.</aside>
+</section>

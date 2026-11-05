@@ -1,0 +1,26 @@
+<section id="framework" data-transition="fade" style="background:#F7F7F4;color:#14213D;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:12px">
+<p style="font-size:24px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#1F5BC6">Microsoft Agent Framework</p>
+<h2 style="font-size:60px;font-weight:600;line-height:1.1;color:#14213D">It runs the tool-calling loop; the rest is structure</h2>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px">
+<div style="background:#E3ECFB;border:3px solid #1F5BC6;border-radius:16px;padding:30px;display:flex;flex-direction:column;gap:10px">
+<p style="font-size:24px;font-weight:600;color:#1F5BC6">The part that matters</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:28px;font-weight:600;color:#14213D">ChatClientAgent</p>
+<p style="font-size:24px;line-height:1.4;color:#14213D">Sends the prompt with the tools, runs the C# tool on each call, and repeats until the JSON reply. Keeps the session for the repair request and sums the tokens.</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:32px;display:flex;flex-direction:column;gap:10px">
+<p style="font-size:24px;font-weight:600;color:#6B7280">Structure</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:28px;font-weight:600;color:#14213D">WorkflowBuilder</p>
+<p style="font-size:24px;line-height:1.4;color:#4A5568">Wires context → review → validation with typed hand-offs and failure events. Linear today: three method calls would do the same.</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:32px;display:flex;flex-direction:column;gap:10px">
+<p style="font-size:24px;font-weight:600;color:#6B7280">Not the framework</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:28px;font-weight:600;color:#14213D">IChatClient</p>
+<p style="font-size:24px;line-height:1.4;color:#4A5568">Microsoft.Extensions.AI: the provider abstraction that swaps OpenAI, Azure OpenAI and Anthropic.</p>
+</div>
+</div>
+<p style="font-size:28px;color:#4A5568">Not used: multi-agent orchestration, persistent memory, hosted agents.</p>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#6B7280">Microsoft.Agents.AI and Microsoft.Agents.AI.Workflows 1.26.0 · ADR-004 · 8</p>
+<aside>Without ChatClientAgent the function-calling loop would be hand-written: send the request with the tool definitions, detect tool calls in the reply, invoke RepositoryTools, append the results, and call again until a final text. The agent also keeps the session, which is how the one repair request reuses the same conversation, and aggregates usage across calls. WorkflowBuilder with InProcessExecution gives the three steps typed inputs and outputs and surfaces ExecutorFailed and WorkflowError events; for a linear pipeline it is organization rather than capability, and it leaves room for parallel steps or more agents later. Provider portability comes from Microsoft.Extensions.AI’s IChatClient, not from the Agent Framework.</aside>
+</section>

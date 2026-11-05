@@ -1,0 +1,52 @@
+<section id="loop" data-transition="fade" style="background:#F7F7F4;color:#14213D;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<div style="display:flex;flex-direction:column;gap:12px">
+<p style="font-size:24px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#1F5BC6">The agent loop</p>
+<h2 style="font-size:60px;font-weight:600;line-height:1.1;color:#14213D">The agent reads what it needs through tools, then returns one JSON</h2>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;gap:16px">
+<div></div>
+<div style="grid-column:span 4;background:#E3ECFB;border:2px dashed #1F5BC6;border-radius:12px;padding:8px 16px">
+<p style="font-size:24px;font-weight:600;color:#1F5BC6;text-align:center">↻ repeats while the model asks for context · at most 40 calls</p>
+</div>
+<div></div>
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:6px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;font-weight:600;color:#1F5BC6">1</p>
+<p style="font-size:26px;font-weight:700;color:#14213D">Prompt in</p>
+<p style="font-size:24px;line-height:1.35;color:#4A5568">instructions and tagged data</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:6px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;font-weight:600;color:#1F5BC6">2</p>
+<p style="font-size:26px;font-weight:700;color:#14213D">Model decides</p>
+<p style="font-size:24px;line-height:1.35;color:#4A5568">answer, or call a tool</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:6px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;font-weight:600;color:#1F5BC6">3</p>
+<p style="font-size:26px;font-weight:700;color:#14213D">Tool call</p>
+<p style="font-size:24px;line-height:1.35;color:#4A5568">function calling, read-only</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:6px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;font-weight:600;color:#1F5BC6">4</p>
+<p style="font-size:26px;font-weight:700;color:#14213D">Guarded</p>
+<p style="font-size:24px;line-height:1.35;color:#4A5568">PathGuard and the budget</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:6px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;font-weight:600;color:#1F5BC6">5</p>
+<p style="font-size:26px;font-weight:700;color:#14213D">Result back</p>
+<p style="font-size:24px;line-height:1.35;color:#4A5568">lines, hits, or a listing</p>
+</div>
+<div style="background:#E3ECFB;border:3px solid #1F5BC6;border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:6px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;font-weight:600;color:#1F5BC6">6</p>
+<p style="font-size:26px;font-weight:700;color:#14213D">JSON out</p>
+<p style="font-size:24px;line-height:1.35;color:#4A5568">findings and the verdict</p>
+</div>
+</div>
+<table style="width:1664px;font-size:24px;color:#14213D">
+<tr><th style="width:34%;text-align:left">Tool</th><th style="width:40%;text-align:left">Returns</th><th style="width:26%;text-align:left">Limit</th></tr>
+<tr><td>read_file(path, from?, to?)</td><td>a line range as “N: text”</td><td>text files only</td></tr>
+<tr><td>search(text)</td><td>matches as “path:line: text”</td><td>100 matches</td></tr>
+<tr><td>list_dir(path)</td><td>entries; folders end in “/”</td><td>—</td></tr>
+</table>
+<p style="font-size:26px;color:#4A5568">Invalid JSON gets one repair request in the same session; a second failure ends the review as failed.</p>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#6B7280">ChatClientAgent with ResponseFormat = JSON schema · ADR-002 · 11</p>
+<aside>The review executor creates a ChatClientAgent with the instructions, the three tools through function calling, and ResponseFormat set to the JSON schema. The model decides when it has read enough. Every tool call goes through PathGuard (no absolute paths, no “..”, no symbolic link leaving the checkout, no excluded path) and the ContextBudget of 40 calls and 400,000 characters, shared with the prompt’s files. A refused call answers with the reason, so the model can carry on. Each returned chunk is recorded with its path, line range and SHA-256 for the context hash. Each tool call resends the conversation, so input tokens grow with tool use. The reply is parsed from its first “{” to its last “}”.</aside>
+</section>

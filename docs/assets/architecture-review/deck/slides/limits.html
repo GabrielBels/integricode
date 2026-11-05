@@ -1,0 +1,35 @@
+<section id="limits" data-transition="fade" style="background:#F7F7F4;color:#14213D;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:12px">
+<p style="font-size:24px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#1F5BC6">Known limits</p>
+<h2 style="font-size:60px;font-weight:600;line-height:1.1;color:#14213D">Where it can surprise you today</h2>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px">
+<div style="background:#FFF4EA;border:1px solid #F2C9A5;border-radius:16px;padding:32px;display:flex;flex-direction:column;gap:10px">
+<p style="font-size:30px;font-weight:700;color:#14213D">Non-deterministic</p>
+<p style="font-size:26px;line-height:1.35;color:#4A5568">Two runs on the same commit found different findings.</p>
+</div>
+<div style="background:#FFF4EA;border:1px solid #F2C9A5;border-radius:16px;padding:32px;display:flex;flex-direction:column;gap:10px">
+<p style="font-size:30px;font-weight:700;color:#14213D">Cost variance</p>
+<p style="font-size:26px;line-height:1.35;color:#4A5568">5k to 135k input tokens on one change; no cost cap.</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:32px;display:flex;flex-direction:column;gap:10px">
+<p style="font-size:30px;font-weight:700;color:#14213D">Large PRs</p>
+<p style="font-size:26px;line-height:1.35;color:#4A5568">Past 400k characters, files arrive as placeholders.</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:32px;display:flex;flex-direction:column;gap:10px">
+<p style="font-size:30px;font-weight:700;color:#14213D">Requirement sources</p>
+<p style="font-size:26px;line-height:1.35;color:#4A5568">REQ entries and Jira Cloud only; no GitHub Issues.</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:32px;display:flex;flex-direction:column;gap:10px">
+<p style="font-size:30px;font-weight:700;color:#14213D">Two languages</p>
+<p style="font-size:26px;line-height:1.35;color:#4A5568">English and Portuguese, picked by a word count.</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:32px;display:flex;flex-direction:column;gap:10px">
+<p style="font-size:30px;font-weight:700;color:#14213D">Private distribution</p>
+<p style="font-size:26px;line-height:1.35;color:#4A5568">Only repositories in the same GitHub account can call it.</p>
+</div>
+</div>
+<p style="font-size:28px;color:#4A5568">Bugs are reported only on changed lines; there is no memory across PRs.</p>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#6B7280">Measured on the first adopter’s PRs 70 and 72 · 19</p>
+<aside>Non-determinism: on PR 72, one run reported a broken test as a second blocker and the next run on the same commit did not; wording changes too, so fingerprints change and comments get minimized and re-posted. Cost: input tokens ranged from about 5,000 to 135,000 on the same one-line change, driven by tool calls; the only caps are 40 calls and 400,000 characters. Large PRs keep running but with incomplete coverage once the budget is spent. Language detection is a word-count heuristic; short or mixed texts fall back to the language input. While the repository and package are private, only repositories under the same GitHub account can call the workflow.</aside>
+</section>

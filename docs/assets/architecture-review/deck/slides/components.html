@@ -1,0 +1,41 @@
+<section id="components" data-transition="fade" style="background:#F7F7F4;color:#14213D;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:12px">
+<p style="font-size:24px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#1F5BC6">Components</p>
+<h2 style="font-size:60px;font-weight:600;line-height:1.1;color:#14213D">One console app, two commands, no server or database</h2>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px">
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:28px;display:flex;flex-direction:column;gap:8px">
+<p style="font-size:30px;font-weight:700;color:#14213D">GitHub Actions</p>
+<p style="font-size:24px;line-height:1.35;color:#4A5568">Reusable workflow: a gate, then the review and comment jobs; a small caller in each adopter</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#6B7280">workflows/review.yml</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:28px;display:flex;flex-direction:column;gap:8px">
+<p style="font-size:30px;font-weight:700;color:#14213D">integricode review</p>
+<p style="font-size:24px;line-height:1.35;color:#4A5568">Reads the PR and its requirement, runs the review workflow, writes result.json</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#6B7280">ReviewCommand.cs</p>
+</div>
+<div style="background:#E3ECFB;border:2px solid #1F5BC6;border-radius:16px;padding:27px;display:flex;flex-direction:column;gap:8px">
+<p style="font-size:30px;font-weight:700;color:#14213D">Review workflow</p>
+<p style="font-size:24px;line-height:1.35;color:#4A5568">Agent Framework executors: context, review agent, validation</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#6B7280">ReviewWorkflow.cs</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:28px;display:flex;flex-direction:column;gap:8px">
+<p style="font-size:30px;font-weight:700;color:#14213D">Model clients</p>
+<p style="font-size:24px;line-height:1.35;color:#4A5568">One IChatClient for OpenAI, Azure OpenAI or Anthropic, with one retry</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#6B7280">ChatClientFactory.cs</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:28px;display:flex;flex-direction:column;gap:8px">
+<p style="font-size:30px;font-weight:700;color:#14213D">Validators</p>
+<p style="font-size:24px;line-height:1.35;color:#4A5568">Provenance of findings and of the verdict; prompt-injection tripwire</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#6B7280">Validation/</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:28px;display:flex;flex-direction:column;gap:8px">
+<p style="font-size:30px;font-weight:700;color:#14213D">integricode comment</p>
+<p style="font-size:24px;line-height:1.35;color:#4A5568">Summary, inline review, dedupe, minimize; every string through CommentTemplates</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#6B7280">CommentCommand.cs</p>
+</div>
+</div>
+<p style="font-size:26px;color:#4A5568">Dependencies: Agent Framework 1.26.0, Microsoft.Extensions.AI.OpenAI 10.11.0, Anthropic SDK 13.3.0 — nothing else.</p>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#6B7280">Source under src/Integricode/ · tests mirror it in tests/Integricode.Tests/ · 5</p>
+<aside>Everything is one .NET 10 console app published as a .NET tool. GitHub clients are plain HttpClient with System.Text.Json; there is no CLI parser, YAML library or logging framework. Requirement sources live under Requirements/: the REQ entry reader and the Jira Cloud client with its Atlassian Document Format converter. The domain records (ReviewResult, Finding, Coverage, Fingerprint, ContextSnapshot) are what result.json carries between the jobs.</aside>
+</section>

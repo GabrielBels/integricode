@@ -1,0 +1,32 @@
+<section id="models" data-transition="fade" style="background:#F7F7F4;color:#14213D;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:12px">
+<p style="font-size:24px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#1F5BC6">Model integration</p>
+<h2 style="font-size:60px;font-weight:600;line-height:1.1;color:#14213D">Every provider sits behind one IChatClient</h2>
+</div>
+<table style="width:1664px;font-size:26px;color:#14213D">
+<tr><th style="width:22%;text-align:left">model-provider</th><th style="width:38%;text-align:left">SDK</th><th style="width:40%;text-align:left">Endpoint</th></tr>
+<tr><td>openai</td><td>OpenAI .NET SDK</td><td>api.openai.com, or model-endpoint</td></tr>
+<tr><td>azure-openai</td><td>OpenAI SDK; model = deployment</td><td>&lt;resource&gt;.openai.azure.com/openai/v1/</td></tr>
+<tr><td>anthropic</td><td>Anthropic .NET SDK, 8,192 out</td><td>api.anthropic.com, or model-endpoint</td></tr>
+</table>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:24px">
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:28px;display:flex;flex-direction:column;gap:8px">
+<p style="font-size:28px;font-weight:700;color:#14213D">Retries</p>
+<p style="font-size:24px;line-height:1.35;color:#4A5568">SDK retries off; one retry on HTTP 429 or 5xx</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:28px;display:flex;flex-direction:column;gap:8px">
+<p style="font-size:28px;font-weight:700;color:#14213D">Errors</p>
+<p style="font-size:24px;line-height:1.35;color:#4A5568">Coverage failed with the HTTP status only, never the provider’s message</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:28px;display:flex;flex-direction:column;gap:8px">
+<p style="font-size:28px;font-weight:700;color:#14213D">Sampling</p>
+<p style="font-size:24px;line-height:1.35;color:#4A5568">Provider defaults; the reply is held to a JSON schema</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DDE2EA;border-radius:16px;padding:28px;display:flex;flex-direction:column;gap:8px">
+<p style="font-size:28px;font-weight:700;color:#14213D">Usage</p>
+<p style="font-size:24px;line-height:1.35;color:#4A5568">Tokens summed per review and kept in the summary’s record</p>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#6B7280">ADR-004 · the key, INTEGRICODE_MODEL_API_KEY, reaches only the review job · 7</p>
+<aside>ChatClientFactory picks the SDK from the model-provider input. OpenAI and Azure OpenAI both go through the OpenAI .NET SDK via Microsoft.Extensions.AI.OpenAI; Azure uses the resource’s OpenAI-compatible v1 endpoint, with the model input as the deployment name. Claude goes through the official Anthropic SDK, with an 8,192-token output limit unless set. The SDKs’ own retry policies are disabled and a RetryingChatClient retries once on 429 or any 5xx, resending the same message history. A provider failure becomes coverage “failed” with “model provider error (HTTP n)”: the provider’s message is never logged or published because it can echo prompt content. The first adopter picks the model per PR from an “AI Review” section in the description, defaulting to claude-sonnet-5-5.</aside>
+</section>
