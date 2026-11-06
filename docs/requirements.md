@@ -59,7 +59,7 @@
 **Source**: PRD-001 (FR-1, FR-2, FR-3, FR-16)
 
 **Acceptance Criteria**:
-- [x] The reusable workflow starts a review on `pull_request` `ready_for_review` and does nothing for draft pull requests or pushes (FR-1).
+- [x] The reusable workflow starts a review on `pull_request` `ready_for_review` and, by default, does nothing for draft pull requests or pushes (FR-1); the `review-on` and `review-drafts` inputs change that (REQ-005).
 - [x] A comment `@integricode review` on a draft or ready pull request starts a review only when its author has admin, maintain, or write permission; other authors are ignored (FR-2).
 - [x] A pull request from a fork is never reviewed and no secret is used for it; when started by a comment, its summary says skipped by policy (FR-3).
 - [x] The `review` job has only read permissions and holds the model and Jira secrets; the `comment` job has only `pull-requests: write` and `packages: read` and holds no secret.
@@ -96,3 +96,18 @@
 **Context/Notes**: Requires REQ-001 and REQ-003. Owner decisions of 2026-11-03: follow `pr-review` in format and method ("Format + method") and add guardrails against prompt injection through the pull request and its commits. The lenses are adapted copies of the skill's references, embedded in the tool; the live OWASP fetch and the chat report stay out, since the review job has no network. Ask First settled: the context sent to the model (method, lenses, data boundary), the published fields (scoreboard, verdict, suggestions, injection warnings), and the `language` input. Owner decision of 2026-11-03, after the first run on a real pull request: the comments follow the language of the pull request's description and commit messages, and the `language` input applies only when they do not tell. ADR [ADR-006](decisions/ADR-006-pr-review-method-and-untrusted-input-boundary.md).
 
 ---
+
+## [REQ-005] Review Triggers the Adopter Chooses
+
+**Description**: The `review-on` input lists the pull-request actions that start a review, and `review-drafts` decides whether drafts are reviewed. Left unset, a pull request is reviewed when it opens as ready or a draft is marked ready, and a draft or a push is not; `opened` is in the default because GitHub never sends `ready_for_review` for a pull request opened as ready.
+
+**Priority**: Medium
+
+**Source**: PRD-001 (FR-1)
+
+**Acceptance Criteria**:
+- [x] A `pull_request` event starts a review only when its action is in `review-on` (default `opened ready_for_review`; a blank value uses the default), and only for a pull request that is not a draft unless `review-drafts` is true (FR-1).
+- [x] An opened pull request from a fork is skipped by policy in the job summary only, like a fork marked ready.
+- [x] The caller in the README and the adoption guide listens to `opened` and `ready_for_review`; both describe the two inputs, and the adoption guide says the caller's `types` must include the `review-on` actions.
+
+**Context/Notes**: Requires REQ-003. Owner decisions of 2026-11-05: the adopter chooses the actions and whether drafts are reviewed; when nothing is set, the defaults apply. A caller that keeps `types: [ready_for_review]` behaves as before. Ask First settled: the trigger change and the two inputs.

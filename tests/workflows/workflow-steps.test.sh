@@ -84,7 +84,8 @@ STUB
     printf '{"permission":"%s","user":{"login":"%s"}}' "$permission" "$user" > "$fixtures/permission-$user.json"
   done
 
-  pr_event() { jq -n --arg action "$1" '{action: $action, pull_request: {number: 7}}'; }
+  # $1 action, $2 true when the pull request is a draft (default false)
+  pr_event() { jq -n --arg action "$1" --argjson draft "${2:-false}" '{action: $action, pull_request: {number: 7, draft: $draft}}'; }
   # $1 action, $2 body as JSON, $3 commenter, $4 true when the issue is a pull request
   comment_event() {
     jq -n --arg action "$1" --argjson body "$2" --arg login "$3" --argjson on_pr "$4" \
@@ -97,7 +98,7 @@ STUB
     mkdir -p "$dir"
     printf '%s' "$3" > "$dir/event.json"
     touch "$dir/output" "$dir/summary"
-    PATH="$work/bin:$PATH" GH_FIXTURES="$fixtures" PULL="$4" GH_TOKEN=test \
+    PATH="$work/bin:$PATH" GH_FIXTURES="$fixtures" PULL="$4" GH_TOKEN=test REVIEW_ON="${REVIEW_ON-}" REVIEW_DRAFTS="${REVIEW_DRAFTS-}" \
       GITHUB_EVENT_PATH="$dir/event.json" GITHUB_EVENT_NAME="$2" GITHUB_REPOSITORY=octo/shop \
       GITHUB_OUTPUT="$dir/output" GITHUB_STEP_SUMMARY="$dir/summary" \
       bash --noprofile --norc -e "$script" > "$dir/log" 2>&1
@@ -118,8 +119,17 @@ STUB
   local writer_asks
   writer_asks=$(comment_event created '"please @integricode review"' writer true)
   gate_case "a push does nothing" push '{"ref":"refs/heads/main"}' same.json none "" 0
-  gate_case "an opened pull request does nothing" pull_request "$(pr_event opened)" same.json none "" 0
-  gate_case "a synchronized pull request does nothing" pull_request "$(pr_event synchronize)" same.json none "" 0
+  gate_case "an opened pull request starts a review" pull_request "$(pr_event opened)" same.json review 7 0
+  gate_case "an opened draft pull request does nothing" pull_request "$(pr_event opened true)" same.json none "" 0
+  gate_case "an opened pull request from a fork is skipped in the job summary only" pull_request "$(pr_event opened)" fork.json none 7 1
+  gate_case "a push does nothing by default" pull_request "$(pr_event synchronize)" same.json none "" 0
+  gate_case "a reopened pull request does nothing by default" pull_request "$(pr_event reopened)" same.json none "" 0
+  REVIEW_ON="opened ready_for_review synchronize" gate_case "a push starts a review when review-on lists it" pull_request "$(pr_event synchronize)" same.json review 7 0
+  REVIEW_ON="opened, reopened" gate_case "review-on accepts commas" pull_request "$(pr_event reopened)" same.json review 7 0
+  REVIEW_ON="opened" gate_case "an action left out of review-on does nothing" pull_request "$(pr_event ready_for_review)" same.json none "" 0
+  REVIEW_ON=" " gate_case "a blank review-on uses the default" pull_request "$(pr_event opened)" same.json review 7 0
+  REVIEW_DRAFTS=true gate_case "an opened draft starts a review when review-drafts is true" pull_request "$(pr_event opened true)" same.json review 7 0
+  REVIEW_ON="opened synchronize" REVIEW_DRAFTS=false gate_case "a push to a draft does nothing when review-drafts is false" pull_request "$(pr_event synchronize true)" same.json none "" 0
   gate_case "ready for review starts a review" pull_request "$(pr_event ready_for_review)" same.json review 7 0
   gate_case "ready for review from a fork is skipped in the job summary only" pull_request "$(pr_event ready_for_review)" fork.json none 7 1
   gate_case "ready for review from a deleted fork is skipped" pull_request "$(pr_event ready_for_review)" deleted-fork.json none 7 1

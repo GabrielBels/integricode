@@ -7,7 +7,7 @@
 
 ## Summary
 
-Integricode is a GitHub Action, published as a package, that reviews a pull request when its author marks it ready for review. It reads the change and its requirement (the linked Jira issue or the dev-flow REQ entry) and reports bugs and requirement mismatches, each with a code location and a failure scenario, plus a requirement quote for a mismatch, all checked against what the review read. At launch it serves the owner as author on his work and personal repositories, so most problems are fixed before anyone else reviews; a human always owns the merge.
+Integricode is a GitHub Action, published as a package, that reviews a pull request when it becomes ready for review. It reads the change and its requirement (the linked Jira issue or the dev-flow REQ entry) and reports bugs and requirement mismatches, each with a code location and a failure scenario, plus a requirement quote for a mismatch, all checked against what the review read. At launch it serves the owner as author on his work and personal repositories, so most problems are fixed before anyone else reviews; a human always owns the merge.
 
 ## Problem
 

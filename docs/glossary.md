@@ -7,7 +7,7 @@ Domain terms and the names they have in code. PRDs, requirements, and new code u
 | Term | Definition | Name in code |
 |---|---|---|
 | Pull request | A proposed code change on GitHub, identified by its number and its head SHA. | `PullRequest` |
-| Ready for review | The moment the author marks a pull request as no longer a draft; the review runs then, before the author requests a reviewer. | - |
+| Ready for review | The moment a pull request is no longer a draft: it opens as ready, or its author marks a draft ready. The review runs then, before the author requests a reviewer. | - |
 | Review command | The pull-request comment `@integricode review`, which starts a review when written by a person with write access to the repository. | - |
 | Head SHA | The commit a review was run against; a review result is valid only for that commit. | `HeadSha` |
 | Linked issue | The Jira issue the pull request declares it implements. | `RequirementKind.JiraIssue`, `JiraRequirementSource` |

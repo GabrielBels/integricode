@@ -1,6 +1,6 @@
 # Integricode
 
-Integricode is a GitHub Action that reviews a pull request when it becomes ready for review, checking it for bugs and against the requirements of its linked issue or REQ entry, so the author can address evidence-backed findings before asking someone to review it. Product details live in [docs/prd.md](docs/prd.md).
+Integricode is a GitHub Action that reviews a pull request when it becomes ready for review (it opens as ready, or a draft is marked ready), checking it for bugs and against the requirements of its linked issue or REQ entry, so the author can address evidence-backed findings before asking someone to review it. Product details live in [docs/prd.md](docs/prd.md).
 
 ## Stack
 

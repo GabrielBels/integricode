@@ -9,7 +9,7 @@
 
 ## Summary
 
-The whole Integricode product in a single delivery: a GitHub Action, installed from a published package, that reviews a pull request when its author marks it ready for review, reads its requirement (a Jira issue or a REQ entry), and publishes bug findings and requirement mismatches backed by evidence, so the author fixes them before asking anyone to review. It is built now because the owner reviews by hand across many pull requests and wants the check to run without him remembering it.
+The whole Integricode product in a single delivery: a GitHub Action, installed from a published package, that reviews a pull request when it becomes ready for review, reads its requirement (a Jira issue or a REQ entry), and publishes bug findings and requirement mismatches backed by evidence, so the author fixes them before asking anyone to review. It is built now because the owner reviews by hand across many pull requests and wants the check to run without him remembering it.
 
 ## Problem
 
@@ -39,7 +39,7 @@ The goals, metrics, baselines, targets, and kill criterion of the product PRD ap
 
 - Approving, requesting changes on, or blocking the merge of a pull request.
 - Changing the code or proposing commits.
-- Reviewing automatically on every push; a new review starts only on ready for review or on request.
+- Reviewing drafts or every push by default; an adopter opts in with `review-drafts` or `review-on`.
 - Requirement sources other than Jira Cloud and REQ entries, including Jira Server or Data Center and GitHub Issues.
 - Bug findings on lines the pull request does not change.
 - A dashboard for the success metrics; they are computed from the recorded results.
@@ -49,7 +49,7 @@ The goals, metrics, baselines, targets, and kill criterion of the product PRD ap
 
 **Trigger and policy**
 
-- FR-1: The system must start a review when a pull request becomes ready for review, and must not start one automatically for a draft pull request or on a push.
+- FR-1: The system must start a review when a pull request becomes ready for review, and by default must not start one automatically for a draft pull request or on a push; the adopter can change both (`review-on`, `review-drafts`).
 - FR-2: The system must start a review when a person with write access to the repository comments `@integricode review` on the pull request, draft or ready, and must ignore that comment from anyone else.
 - FR-3: The system must not review a pull request opened from a fork, whatever started the review; its result must say skipped by policy, and that run must have no access to the issue-tracker credential.
 
@@ -91,7 +91,7 @@ The goals, metrics, baselines, targets, and kill criterion of the product PRD ap
 ## User Experience
 
 - **Main flow:** the author marks the pull request ready; the pipeline shows the review step running; the summary comment and the inline findings appear; the author fixes, pushes, and comments `@integricode review`; the summary is updated and the earlier findings are marked outdated; the author then requests a reviewer.
-- **Entry points:** marking the pull request ready for review, and the comment `@integricode review` on a draft or ready pull request.
+- **Entry points:** opening a pull request as ready, marking a draft ready for review, and the comment `@integricode review` on a draft or ready pull request.
 - **Summary states:** reviewed (with counts), incomplete coverage (with what was missing and how to link a requirement), skipped by policy, superseded, failed (with the reason).
 - **Finding copy:** a kind label (Requirement mismatch or Bug), the requirement quote for a mismatch, the failure scenario in one or two sentences, and the code location.
 - **No other interface:** everything happens on the pull request; there are no screens.
@@ -147,3 +147,5 @@ The risks of the product PRD apply: see [prd.md](../prd.md). Specific to this de
 - 2026-10-30: /breakdown PRD-001 → design, ADR-001 to ADR-004, and REQ-001 to REQ-003 approved by the owner (Approved)
 - 2026-11-03: How are findings presented? → In the format and by the method of the dev-flow `pr-review` skill: traffic lights, Conventional Comments labels, suggestions, and a requirement verdict, in the configured language, with guardrails against prompt injection (Approved; REQ-004)
 - 2026-11-03: Which language do the comments use? → The language of the pull request's description and commit messages; the `language` input applies only when they do not tell (Approved; REQ-004)
+- 2026-11-05: Does a pull request opened as ready start a review? → Yes: it becomes ready for review when it opens; only a draft waits until it is marked ready (Approved; REQ-005)
+- 2026-11-05: Who chooses when a review starts? → The adopter, with the `review-on` and `review-drafts` inputs; left unset, a pull request that opens as ready or is marked ready is reviewed, and a draft or a push is not (Approved; REQ-005)

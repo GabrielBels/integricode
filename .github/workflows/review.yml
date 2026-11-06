@@ -42,6 +42,14 @@ on:
         description: Repository tool calls the review may make before its coverage becomes incomplete.
         type: number
         default: 40
+      review-on:
+        description: Pull-request actions that start a review, separated by spaces, commas, or new lines; the caller's pull_request types must include them. Empty uses the default.
+        type: string
+        default: opened ready_for_review
+      review-drafts:
+        description: Also review draft pull requests on those actions; the @integricode review command works on drafts either way.
+        type: boolean
+        default: false
       language:
         description: Language of the review text and of the published labels, en or pt-BR, when the pull request's description and commit messages do not tell.
         type: string
@@ -75,6 +83,8 @@ jobs:
         id: gate
         env:
           GH_TOKEN: ${{ github.token }}
+          REVIEW_ON: ${{ inputs.review-on }}
+          REVIEW_DRAFTS: ${{ inputs.review-drafts }}
         run: |
           set -euo pipefail
           event="$GITHUB_EVENT_PATH"
@@ -82,7 +92,11 @@ jobs:
           pr=""
           case "$GITHUB_EVENT_NAME" in
             pull_request)
-              if [ "$action" = ready_for_review ]; then
+              # review-on picks the actions (the caller's types must include them); a draft waits unless review-drafts is true.
+              review_on=$(tr ',\n' '  ' <<< "${REVIEW_ON:-}")
+              if [ -z "${review_on// /}" ]; then review_on="opened ready_for_review"; fi
+              draft=$(jq -r '.pull_request.draft' "$event")
+              if [[ " $review_on " == *" $action "* ]] && { [ "$draft" = false ] || [ "${REVIEW_DRAFTS:-false}" = true ]; }; then
                 pr=$(jq -r '.pull_request.number' "$event")
               fi
               ;;

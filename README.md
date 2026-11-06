@@ -7,7 +7,7 @@
 ![Microsoft Agent Framework](https://img.shields.io/badge/Microsoft-Agent%20Framework-5E5E5E)
 ![Models](https://img.shields.io/badge/models-OpenAI%20%C2%B7%20Azure%20OpenAI%20%C2%B7%20Anthropic-6d28d9)
 
-When a pull request is marked **ready for review**, or someone with write access comments `@integricode review`, Integricode reads the diff and the linked requirement (a `REQ-NNN` entry in your repository or a Jira Cloud issue), reviews the change with an LLM, validates every finding in plain code, and posts the result on the pull request. The author can fix what it finds before asking a person for review.
+When a pull request opens (not as a draft) or is marked **ready for review**, or someone with write access comments `@integricode review`, Integricode reads the diff and the linked requirement (a `REQ-NNN` entry in your repository or a Jira Cloud issue), reviews the change with an LLM, validates every finding in plain code, and posts the result on the pull request. The author can fix what it finds before asking a person for review.
 
 It never approves, requests changes, or blocks a merge. It tells the author what to fix first.
 
@@ -66,7 +66,7 @@ The scoreboard says "good to merge" only when nothing is 🔴, the change solves
 
 ```mermaid
 flowchart TB
-    ready(["PR marked ready for review"]):::trigger
+    ready(["PR opened or marked ready<br/>(drafts wait)"]):::trigger
     command(["Comment @integricode review"]):::trigger
     gate{"gate"}:::decision
     skip["Not reviewed: fork or<br/>commenter without write access"]:::muted
@@ -133,7 +133,7 @@ The workflow installs the tool from a private GitHub Packages feed, so this work
 
    on:
      pull_request:
-       types: [ready_for_review]
+       types: [opened, ready_for_review]
      issue_comment:
        types: [created]
 
@@ -155,8 +155,10 @@ The workflow installs the tool from a private GitHub Packages feed, so this work
          jira-api-token: ${{ secrets.JIRA_API_TOKEN }}
    ```
 
+   To choose when it runs, list the actions in `types` and in the `review-on` input (default `opened ready_for_review`), and set `review-drafts: true` to review drafts too. Left unset, a pull request is reviewed when it opens as ready or a draft is marked ready, never as a draft or on a push.
+
 3. Put a requirement ID in the pull request's title, branch name, or description: `REQ-012` for an entry in `docs/requirements.md`, or a Jira key such as `SHOP-123`. Without one, Integricode still reports bugs and marks the coverage incomplete.
-4. Mark a pull request ready for review, or comment `@integricode review` on it.
+4. Open a pull request that is not a draft, mark a draft ready for review, or comment `@integricode review` on it.
 
 ### Run It from Source
 

@@ -1,6 +1,6 @@
 # Adopting Integricode
 
-Integricode reviews a pull request when it becomes ready for review, or when someone with write access comments `@integricode review`. It checks the change for bugs and against its linked REQ entry or Jira issue, then posts a summary comment and inline findings. It never approves, requests changes, or blocks a merge.
+Integricode reviews a pull request when it opens as ready or a draft is marked ready for review, or when someone with write access comments `@integricode review`. It checks the change for bugs and against its linked REQ entry or Jira issue, then posts a summary comment and inline findings. It never approves, requests changes, or blocks a merge.
 
 A repository adopts it by adding one caller workflow and a few secrets. This guide covers every step.
 
@@ -38,7 +38,7 @@ name: Integricode
 
 on:
   pull_request:
-    types: [ready_for_review]
+    types: [opened, ready_for_review]
   issue_comment:
     types: [created]
 
@@ -61,7 +61,7 @@ jobs:
       jira-api-token: ${{ secrets.JIRA_API_TOKEN }}
 ```
 
-The caller's `permissions` are the most the reusable workflow's jobs can get; each job then keeps only what it needs. Keep the `on:` triggers as written: the workflow reviews only on `ready_for_review` and on new comments, and ignores every other event.
+The caller's `permissions` are the most the reusable workflow's jobs can get; each job then keeps only what it needs. The `pull_request` `types` are the events GitHub sends; the `review-on` input picks which of them start a review, and `review-drafts` decides whether drafts are reviewed (see the inputs below). Left unset, a pull request is reviewed when it opens as ready or a draft is marked ready, never as a draft or on a push. To review every push, add `synchronize` to both `types` and `review-on`; it costs one model run per push. Keep `issue_comment` `created` for the `@integricode review` command; the workflow ignores every other event.
 
 To pick the provider per pull request, see the caller in [integricode-demo](https://github.com/GabrielBels/integricode-demo/blob/main/.github/workflows/integricode.yml): it reads a `claude-*` or `gpt-*` model from an `## AI Review` heading in the description and passes only that provider's key.
 
@@ -78,6 +78,8 @@ To pick the provider per pull request, see the caller in [integricode-demo](http
 | `exclude` | empty | Extra paths the review never reads, one glob per line. `.env*`, key and certificate files, lockfiles, binaries, and `*.min.*` are always excluded. |
 | `max-context-chars` | `400000` | Characters the review may read before its coverage becomes incomplete. |
 | `max-tool-calls` | `40` | Repository tool calls the review may make before its coverage becomes incomplete. |
+| `review-on` | `opened ready_for_review` | The pull-request actions that start a review, separated by spaces, commas, or new lines, such as `opened ready_for_review synchronize`. The caller's `pull_request` `types` must include them, since GitHub sends only those. Empty uses the default. |
+| `review-drafts` | `false` | `true` also reviews draft pull requests on those actions. The `@integricode review` command works on drafts either way. |
 | `language` | `en` | The language (`en` or `pt-BR`) of the review's text and of every published label when the pull request's description and commit subject lines do not tell; otherwise the review writes in theirs. The tool counts the words only one of the two languages uses, outside code, links, and HTML comments, so a text with none of them, or as many of each, leaves the choice to this input. Any other value stops the review with a usage error. |
 
 The Jira inputs need a tool release that includes the Jira source (REQ-002). With an older release, setting `jira-base-url` stops the review with a usage error.
@@ -98,7 +100,7 @@ Integricode still reports bugs and marks the coverage incomplete, naming what wa
 
 ## 5. Run a Review
 
-- **Mark the pull request ready for review.** Draft pull requests and pushes start nothing. A pull request opened as ready, not as a draft, is never marked ready, so it needs the comment below.
+- **Open the pull request as ready, or mark a draft ready for review.** With the default inputs, a pull request that opens as a draft, and pushes, start nothing.
 - **Comment `@integricode review`** on a draft or ready pull request to review its current head. Only users with admin, maintain, or write permission can do this; comments from others are ignored.
 
 The workflow run shows two jobs, `review` and `comment`. The review follows the method and the format of the dev-flow `pr-review` skill. On the pull request you get:
@@ -121,7 +123,7 @@ The diff, the changed files, and the requirement, Jira comments included, can ca
 
 ## Pull Requests from Forks
 
-A pull request from a fork is never reviewed: its code is never checked out, and the model and Jira secrets are never used for it. When marked ready, its run stops at the gate and the job summary says skipped by policy. When someone with write access comments `@integricode review`, the summary comment on the pull request says skipped by policy.
+A pull request from a fork is never reviewed: its code is never checked out, and the model and Jira secrets are never used for it. When it opens as ready or is marked ready, its run stops at the gate and the job summary says skipped by policy. When someone with write access comments `@integricode review`, the summary comment on the pull request says skipped by policy.
 
 ## Troubleshooting
 
