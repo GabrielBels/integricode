@@ -52,7 +52,7 @@ Every provider sits behind the same abstraction, `IChatClient` from `Microsoft.E
 | `azure-openai` | The same OpenAI SDK, with `model` as the deployment name | the resource's OpenAI-compatible v1 endpoint, `https://<resource>.openai.azure.com/openai/v1/` |
 | `anthropic` | Anthropic .NET SDK (`AnthropicClient.AsIChatClient(model)`), with an 8,192-token output limit | `api.anthropic.com`, or `model-endpoint` |
 
-The key comes from the `INTEGRICODE_MODEL_API_KEY` secret. The SDKs' own retries are off; a `RetryingChatClient` retries a call once when the provider answers 429 or 5xx. A provider error ends the review with coverage "failed" and only the HTTP status, never the provider's message, which can echo the prompt. The model's sampling settings, such as temperature, are the provider's defaults.
+The key comes from the `INTEGRICODE_MODEL_API_KEY` environment variable, which the reusable workflow fills from its `model-api-key` secret. The SDKs' own retries are off; a `RetryingChatClient` retries a call once when the provider answers 429 or 5xx. A provider error ends the review with coverage "failed" and only the HTTP status, never the provider's message, which can echo the prompt. The model's sampling settings, such as temperature, are the provider's defaults.
 
 ## What the Model Receives
 

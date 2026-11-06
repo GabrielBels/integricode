@@ -20,27 +20,34 @@ It never approves, requests changes, or blocks a merge. It tells the author what
 
 ## What You Get on the Pull Request
 
+To see it on a real pull request, open [integricode-demo#1](https://github.com/GabrielBels/integricode-demo/pull/1). It caps a search at 100 numbers with an off-by-one written in on purpose; its 8 tests pass, and Integricode flags the bug and the missing boundary tests. The excerpts below come from that review.
+
 **A summary comment**, updated in place by every review:
 
 ```text
 🚦 Integricode review
 
-🔴 1 · 🟡 0 · 🟢 0 — blocking issues to fix before merge.
+🔴 4 · 🟡 0 · 🟢 0 — blocking issues to fix before merge.
 
-Solves REQ-012? Partly — the change rejects exactly 100 distinct numbers, which contradicts "at most 100 numbers".
-- ⚠️ "at most 100 numbers" — src/Search/NumberSearch.cs:57 — `>= MaxNumbers` rejects 100 distinct numbers.
-- ⚠️ 0 of 1 checked criteria covered
+Solves REQ-001? No — The limit is off by one: `>=` rejects exactly 100 numbers. The tests skip the 100/101 boundary, so they don't catch it.
+- ❌ "A search accepts at most 100 numbers." — src/Search/NumberSearch.cs:39 uses >=, so 100 numbers are rejected
+- ❌ "Tests cover the boundary: 100 numbers pass, 101 are rejected." — tests/Search.Tests/NumberSearchTests.cs:24,29 use 50 and 150
+- ⚠️ 2 of 4 checked criteria covered
 
-| State       | Reviewed, coverage complete |
-| Requirement | REQ-012 (from the title)    |
-| Lenses      | csharp, security            |
+| State                           | Reviewed, coverage complete               |
+| Requirement                     | REQ-001 (from the title)                  |
+| Findings                        | 2 requirement mismatches, 2 code findings |
+| Dropped by the provenance check | 0                                         |
+| Lenses                          | csharp, security                          |
 ```
 
 **Inline comments** on the changed lines, each labeled with a traffic light and a [Conventional Comments](https://conventionalcomments.org/) label, with a failure scenario and, when the fix is small, a suggestion the author applies with one click:
 
-> 🔴 `issue (blocking)` **Off-by-one: exactly 100 numbers are now rejected** · _requirement_
+> 🔴 `issue (blocking)` **Off-by-one: a search with exactly 100 numbers is rejected** · _requirement_
 >
-> A search with exactly 100 valid numbers, which the requirement allows, fails with "At most 100 numbers per search".
+> > A search accepts at most 100 numbers.
+>
+> A user pastes exactly 100 distinct order numbers. Because the check is `numbers.Count >= MaxNumbers`, the parser throws "At most 100 numbers per search." and the valid search is refused.
 >
 > ```diff
 > - if (numbers.Count >= MaxNumbers)
@@ -118,7 +125,7 @@ You need an API key for OpenAI, Azure OpenAI, or Anthropic.
 
 The workflow installs the tool from a private GitHub Packages feed, so this works for repositories the owner grants package access; anywhere else, [run it from source](#run-it-from-source). The [adoption guide](docs/guides/adoption.md) covers every step and input.
 
-1. Add the repository secret `INTEGRICODE_MODEL_API_KEY` (and, to review against Jira, `JIRA_EMAIL` and `JIRA_API_TOKEN`).
+1. Add one repository secret per model provider you use, `INTEGRICODE_ANTHROPIC_API_KEY`, `INTEGRICODE_OPENAI_API_KEY`, or `INTEGRICODE_AZURE_OPENAI_API_KEY` (and, to review against Jira, `JIRA_EMAIL` and `JIRA_API_TOKEN`). The caller passes the one that matches `model-provider` as `model-api-key`.
 2. Add `.github/workflows/integricode.yml` on the default branch:
 
    ```yaml
@@ -140,10 +147,10 @@ The workflow installs the tool from a private GitHub Packages feed, so this work
        if: github.event_name == 'pull_request' || (github.event.issue.pull_request && contains(github.event.comment.body, '@integricode review'))
        uses: GabrielBels/integricode/.github/workflows/review.yml@v1
        with:
-         model-provider: anthropic   # or openai, azure-openai
+         model-provider: anthropic   # or openai, azure-openai, with that provider's secret below
          model: <model name>
        secrets:
-         model-api-key: ${{ secrets.INTEGRICODE_MODEL_API_KEY }}
+         model-api-key: ${{ secrets.INTEGRICODE_ANTHROPIC_API_KEY }}
          jira-email: ${{ secrets.JIRA_EMAIL }}
          jira-api-token: ${{ secrets.JIRA_API_TOKEN }}
    ```
@@ -162,7 +169,7 @@ dotnet build Integricode.slnx
 dotnet test Integricode.slnx
 ```
 
-To review a pull request from your machine, check out its head commit, set `GITHUB_TOKEN` (a token that reads the repository) and `INTEGRICODE_MODEL_API_KEY`, then run:
+To review a pull request from your machine, check out its head commit, set `GITHUB_TOKEN` (a token that reads the repository) and `INTEGRICODE_MODEL_API_KEY` (the key of the provider you pass as `--model-provider`), then run:
 
 ```bash
 dotnet run --project src/Integricode -- review --repo owner/name --pr 42 --workspace <checkout> --out result.json --model-provider anthropic --model <model name>

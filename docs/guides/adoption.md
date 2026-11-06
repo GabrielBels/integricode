@@ -19,9 +19,13 @@ In the adopting repository, open **Settings > Secrets and variables > Actions** 
 
 | Repository secret | Passed as | Required |
 |---|---|---|
-| `INTEGRICODE_MODEL_API_KEY` | `model-api-key` | Yes |
+| `INTEGRICODE_ANTHROPIC_API_KEY` | `model-api-key` | With `model-provider: anthropic` |
+| `INTEGRICODE_OPENAI_API_KEY` | `model-api-key` | With `model-provider: openai` |
+| `INTEGRICODE_AZURE_OPENAI_API_KEY` | `model-api-key` | With `model-provider: azure-openai` |
 | `JIRA_EMAIL` | `jira-email` | Only for Jira |
 | `JIRA_API_TOKEN` | `jira-api-token` | Only for Jira |
+
+Keep one secret per provider and pass only the one that matches `model-provider`, so a change of provider never sends one provider's key to another provider's endpoint.
 
 The model and Jira secrets reach only the `review` job, which cannot write to the repository. The `comment` job, the only one that writes, receives no secret ([ADR-001](../decisions/ADR-001-separate-review-comment-credentials.md)).
 
@@ -52,12 +56,14 @@ jobs:
       model-provider: openai
       model: <model name>
     secrets:
-      model-api-key: ${{ secrets.INTEGRICODE_MODEL_API_KEY }}
+      model-api-key: ${{ secrets.INTEGRICODE_OPENAI_API_KEY }}
       jira-email: ${{ secrets.JIRA_EMAIL }}
       jira-api-token: ${{ secrets.JIRA_API_TOKEN }}
 ```
 
 The caller's `permissions` are the most the reusable workflow's jobs can get; each job then keeps only what it needs. Keep the `on:` triggers as written: the workflow reviews only on `ready_for_review` and on new comments, and ignores every other event.
+
+To pick the provider per pull request, see the caller in [integricode-demo](https://github.com/GabrielBels/integricode-demo/blob/main/.github/workflows/integricode.yml): it reads a `claude-*` or `gpt-*` model from an `## AI Review` heading in the description and passes only that provider's key.
 
 ## 3. Set the Inputs
 
@@ -123,6 +129,6 @@ A pull request from a fork is never reviewed: its code is never checked out, and
 |---|---|
 | The caller fails with a workflow that is not found or not accessible | The `uses:` line does not name `GabrielBels/integricode/.github/workflows/review.yml@v1`, or the `v1` tag does not exist. |
 | `Install Integricode` fails with HTTP 401 or 403 | The package's Actions access does not give the repository the Read role, or the caller workflow does not grant `packages: read`. |
-| The summary says failed with a model provider configuration error | The provider, model, endpoint, or `INTEGRICODE_MODEL_API_KEY` is wrong or missing. |
+| The summary says failed with a model provider configuration error | The provider, model, endpoint, or the provider's key secret is wrong or missing. |
 | A comment `@integricode review` starts no review | The comment does not contain the exact phrase, its author lacks write access, or it was edited instead of posted. |
 | The `review` job fails saying the pull request moved during the review | A commit arrived while the review ran. Comment `@integricode review` again. |
