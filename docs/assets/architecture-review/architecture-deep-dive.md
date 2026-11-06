@@ -108,7 +108,7 @@ Every provider sits behind `IChatClient` from `Microsoft.Extensions.AI`, so the 
 | `azure-openai` | Same OpenAI SDK; `model` is the deployment name | `https://<resource>.openai.azure.com/openai/v1/` (OpenAI-compatible v1 API) | `model-endpoint` required |
 | `anthropic` | Anthropic .NET SDK: `AnthropicClient.AsIChatClient(model)` | `api.anthropic.com`, or `model-endpoint` | Max output 8,192 tokens unless set |
 
-- **Credential:** one API key, `INTEGRICODE_MODEL_API_KEY`, available only in the `review` job.
+- **Credential:** the caller keeps one secret per provider and passes only the one that matches `model-provider`; the tool reads it from `INTEGRICODE_MODEL_API_KEY`, set only in the `review` job.
 - **Retries:** the SDKs' own retries are off; `RetryingChatClient` retries a call once on HTTP 429 or 5xx, with the same message history.
 - **Errors:** a provider failure ends the review with coverage `failed` and the reason "model provider error (HTTP 503)" — only the status or exception type, never the provider's message, which can echo prompt content.
 - **Sampling:** temperature and similar settings are the provider's defaults; the output is constrained by a JSON schema instead.
@@ -300,7 +300,7 @@ The scoreboard says "good to merge" only when nothing is blocking, the requireme
 The tool ships as a private .NET tool package; adopters pin a major version and get fixes without changing their workflow.
 
 - **Release:** pushing a `vX.Y.Z` tag runs `release.yml`: build, test, pack with that version, push to GitHub Packages, and move the `vX` tag. Callers use `review.yml@v1`, which installs `1.*`. Releases so far: v1.0.0, v1.1.0, v1.1.1.
-- **Adoption:** one caller workflow, one secret (`INTEGRICODE_MODEL_API_KEY`, plus Jira's two when used), and the Read role on the package for the repository. Inputs: provider, model, endpoint, requirements file, Jira site and criteria field, extra exclusions, the two budgets, and the fallback language.
+- **Adoption:** one caller workflow, one secret per model provider (`INTEGRICODE_ANTHROPIC_API_KEY`, `INTEGRICODE_OPENAI_API_KEY`, or `INTEGRICODE_AZURE_OPENAI_API_KEY`, plus Jira's two when used), and the Read role on the package for the repository. Inputs: provider, model, endpoint, requirements file, Jira site and criteria field, extra exclusions, the two budgets, and the fallback language.
 - **Observability:** the Actions log of each run prints the language and its source, the requirement used, coverage and reasons, finding counts by kind and light, dropped counts by reason, lenses, injection-warning locations, the context hash, and token usage. Nothing else is stored; the PR's summary comment keeps a machine-readable record for metrics.
 - **Latency target (PRD):** summary published within 10 minutes for PRs of up to 1,000 changed lines, in 90% of the first 20 reviews.
 
